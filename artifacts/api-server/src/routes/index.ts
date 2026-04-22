@@ -295,6 +295,7 @@ import domainsRouter from "./domains";
 import billingRouter from "./billing";
 import creditsRouter from "./credits";
 import billingInvoicesRouter from "./billing-invoices";
+import billingStripeRouter from "./billing-stripe";
 import adminCreditsRouter from "./admin-credits";
 import agentChatRouter from "./agent-chat";
 import mobileRouter from "./mobile";
@@ -599,6 +600,7 @@ router.use(domainsRouter);
 router.use(billingRouter);
 router.use(creditsRouter);
 router.use(billingInvoicesRouter);
+router.use(billingStripeRouter);
 // stripeWebhookRouter is mounted in app.ts BEFORE express.json() so the
 // signature verification can read the raw body. Do not mount it here.
 router.use(adminCreditsRouter);

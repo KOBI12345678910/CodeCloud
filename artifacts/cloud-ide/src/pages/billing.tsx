@@ -14,6 +14,17 @@ interface BalanceData {
 
 interface LedgerEntry { id: string; kind: string; amountUsd: number; description: string | null; createdAt: string; }
 interface InvoiceRow { id: string; number: string; status: string; totalUsd: number; issuedAt: string; pdfUrl: string; description: string | null; hostedUrl: string | null; }
+interface SubscriptionInfo {
+  plan: "free" | "pro" | "team";
+  subscription: {
+    status: string;
+    planId: string;
+    stripeCustomerId: string | null;
+    currentPeriodEnd: string | null;
+    cancelAtPeriodEnd: string | null;
+  } | null;
+}
+const PLAN_PRICE_USD: Record<string, number> = { free: 0, pro: 20, team: 40 };
 
 const KIND_LABELS: Record<string, string> = {
   topup: "Top-up",
@@ -33,6 +44,7 @@ export default function BillingDashboard() {
   const [balance, setBalance] = useState<BalanceData | null>(null);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
+  const [sub, setSub] = useState<SubscriptionInfo | null>(null);
   const [topupAmount, setTopupAmount] = useState("20");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -49,12 +61,13 @@ export default function BillingDashboard() {
 
   const refresh = useCallback(async () => {
     try {
-      const [b, l, inv] = await Promise.all([
+      const [b, l, inv, s] = await Promise.all([
         authedFetch("/credits/balance"),
         authedFetch("/credits/ledger?limit=50"),
         authedFetch("/billing/invoices"),
+        authedFetch("/billing/subscription").catch(() => null),
       ]);
-      setBalance(b); setLedger(l.entries || []); setInvoices(inv);
+      setBalance(b); setLedger(l.entries || []); setInvoices(inv); setSub(s);
     } catch { /* */ } finally { setLoading(false); }
   }, [authedFetch]);
 
@@ -93,6 +106,22 @@ export default function BillingDashboard() {
       }
     } catch (e) { console.error(e); } finally { setBusy(null); }
   }, [authedFetch, topupAmount, refresh]);
+
+  const openPortal = useCallback(async () => {
+    setBusy("portal");
+    try {
+      const out = await authedFetch("/billing/portal", { method: "POST" });
+      if (out.url) window.location.href = out.url;
+    } catch (e) { console.error(e); } finally { setBusy(null); }
+  }, [authedFetch]);
+
+  const subscribe = useCallback(async (plan: "pro" | "team") => {
+    setBusy(`subscribe-${plan}`);
+    try {
+      const out = await authedFetch("/billing/subscribe", { method: "POST", body: JSON.stringify({ plan }) });
+      if (out.checkoutUrl) window.location.href = out.checkoutUrl;
+    } catch (e) { console.error(e); } finally { setBusy(null); }
+  }, [authedFetch]);
 
   const saveAutoTopup = useCallback(async (patch: { enabled?: boolean; thresholdUsd?: number; topupAmountUsd?: number; lowBalanceWarnUsd?: number }) => {
     setBusy("autotopup");
@@ -139,6 +168,55 @@ export default function BillingDashboard() {
             <button onClick={() => setCheckoutBanner(null)} className="text-xs text-muted-foreground hover:text-foreground">Dismiss</button>
           </div>
         )}
+        <div className="bg-card border border-border rounded-2xl p-6">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Subscription</div>
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <span className="text-2xl font-bold capitalize">{sub?.plan ?? "free"}</span>
+                <span className="text-sm text-muted-foreground">
+                  {sub?.plan === "free"
+                    ? "Free forever"
+                    : `$${PLAN_PRICE_USD[sub?.plan ?? "free"] ?? 0}/mo`}
+                </span>
+                {sub?.subscription?.status && sub.subscription.status !== "active" && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 capitalize">
+                    {sub.subscription.status.replace(/_/g, " ")}
+                  </span>
+                )}
+              </div>
+              {sub?.subscription?.currentPeriodEnd && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  Renews on {new Date(sub.subscription.currentPeriodEnd).toLocaleDateString()}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {(!sub || sub.plan === "free") && (
+                <>
+                  <Button size="sm" onClick={() => void subscribe("pro")} disabled={busy?.startsWith("subscribe")}>
+                    Upgrade to Pro · $20/mo
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => void subscribe("team")} disabled={busy?.startsWith("subscribe")}>
+                    Team · $40/mo
+                  </Button>
+                </>
+              )}
+              {sub?.plan === "pro" && (
+                <Button size="sm" onClick={() => void subscribe("team")} disabled={busy?.startsWith("subscribe")}>
+                  Upgrade to Team · $40/mo
+                </Button>
+              )}
+              {sub?.subscription?.stripeCustomerId && (
+                <Button size="sm" variant="outline" onClick={() => void openPortal()} disabled={busy === "portal"}>
+                  <Settings className="w-3.5 h-3.5 mr-1" />
+                  {busy === "portal" ? "Opening…" : "Manage subscription"}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
         {balance?.lowBalance && (
           <div className="rounded-2xl border border-yellow-500/40 bg-yellow-500/10 p-4 flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />

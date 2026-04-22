@@ -6,7 +6,7 @@ import * as awarenessProtocol from "y-protocols/awareness";
 import * as encoding from "lib0/encoding";
 import * as decoding from "lib0/decoding";
 import { verifyToken } from "@clerk/express";
-import { db, usersTable, collaboratorsTable, projectsTable } from "@workspace/db";
+import { db, usersTable, collaboratorsTable, projectsTable, yjsDocumentsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
@@ -17,11 +17,62 @@ const messageAuth = 2;
 interface DocEntry {
   doc: Y.Doc;
   awareness: awarenessProtocol.Awareness;
+  saveTimer?: NodeJS.Timeout;
+  dirty: boolean;
+  loaded: boolean;
 }
 
 const docs = new Map<string, DocEntry>();
 const docClients = new Map<string, Set<WebSocket>>();
 const wsAwarenessIds = new WeakMap<WebSocket, Set<number>>();
+
+const SAVE_DEBOUNCE_MS = 2000;
+
+async function loadPersistedState(docName: string, doc: Y.Doc): Promise<void> {
+  try {
+    const [row] = await db
+      .select({ state: yjsDocumentsTable.state })
+      .from(yjsDocumentsTable)
+      .where(eq(yjsDocumentsTable.docName, docName));
+    if (row?.state) {
+      Y.applyUpdate(doc, new Uint8Array(row.state));
+      logger.info({ docName, bytes: row.state.length }, "Yjs document restored from storage");
+    }
+  } catch (err) {
+    logger.error({ err, docName }, "Failed to load Yjs state");
+  }
+}
+
+async function persistDoc(docName: string, doc: Y.Doc): Promise<void> {
+  try {
+    const update = Y.encodeStateAsUpdate(doc);
+    const buf = Buffer.from(update);
+    await db
+      .insert(yjsDocumentsTable)
+      .values({ docName, state: buf, bytes: buf.length, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: yjsDocumentsTable.docName,
+        set: { state: buf, bytes: buf.length, updatedAt: new Date() },
+      });
+  } catch (err) {
+    logger.error({ err, docName }, "Failed to persist Yjs state");
+  }
+}
+
+function scheduleSave(docName: string): void {
+  const entry = docs.get(docName);
+  if (!entry) return;
+  entry.dirty = true;
+  if (entry.saveTimer) return;
+  entry.saveTimer = setTimeout(() => {
+    const e = docs.get(docName);
+    if (!e) return;
+    e.saveTimer = undefined;
+    if (!e.dirty) return;
+    e.dirty = false;
+    void persistDoc(docName, e.doc);
+  }, SAVE_DEBOUNCE_MS);
+}
 
 function getYDoc(docName: string): DocEntry {
   let entry = docs.get(docName);
@@ -49,8 +100,15 @@ function getYDoc(docName: string): DocEntry {
       }
     });
 
-    entry = { doc, awareness };
+    entry = { doc, awareness, dirty: false, loaded: false };
     docs.set(docName, entry);
+
+    doc.on("update", () => scheduleSave(docName));
+
+    void loadPersistedState(docName, doc).finally(() => {
+      const e = docs.get(docName);
+      if (e) e.loaded = true;
+    });
   }
   return entry;
 }
@@ -291,6 +349,13 @@ export function initYjsWebSocket(server: HttpServer): void {
           docClients.delete(docName);
           setTimeout(() => {
             if (!docClients.has(docName) || docClients.get(docName)!.size === 0) {
+              const e = docs.get(docName);
+              if (e?.dirty || e?.saveTimer) {
+                if (e.saveTimer) clearTimeout(e.saveTimer);
+                e.saveTimer = undefined;
+                e.dirty = false;
+                void persistDoc(docName, doc);
+              }
               awareness.destroy();
               doc.destroy();
               docs.delete(docName);

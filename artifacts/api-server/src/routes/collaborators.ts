@@ -49,9 +49,26 @@ router.post("/projects/:id/collaborators", requireAuth, requireProjectAccess("ad
     return;
   }
 
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.username, parsed.data.username));
+  const lookup = parsed.data.username.trim();
+  const isEmail = lookup.includes("@");
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(isEmail ? eq(usersTable.email, lookup.toLowerCase()) : eq(usersTable.username, lookup));
   if (!user) {
-    res.status(404).json({ error: "User not found" });
+    res.status(404).json({ error: isEmail ? "No CodeCloud account uses that email." : "User not found" });
+    return;
+  }
+  if (user.id === (req as AuthenticatedRequest).userId) {
+    res.status(400).json({ error: "You're already the owner of this project." });
+    return;
+  }
+  const [existing] = await db
+    .select()
+    .from(collaboratorsTable)
+    .where(and(eq(collaboratorsTable.projectId, params.data.id), eq(collaboratorsTable.userId, user.id)));
+  if (existing) {
+    res.status(409).json({ error: `${user.username} is already a collaborator.` });
     return;
   }
 

@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { useUser } from "@clerk/react";
 import Editor, { loader } from "@monaco-editor/react";
 import { registerMonacoExtensions, getEditorOptions, setupMultiCursorKeybindings } from "@/lib/monaco-extensions";
+import { CollaboratorsPanel } from "@/components/CollaboratorsPanel";
 import ImagePreview, { isImageFile } from "@/components/ide/ImagePreview";
 import ResourceMonitor from "@/components/ide/ResourceMonitor";
 import TerminalPanel from "@/components/ide/TerminalPanel";
@@ -926,6 +927,7 @@ export default function ProjectPage({ id }: { id: string }) {
   const [cursorPosition, setCursorPosition] = useState({ line: 1, column: 1 });
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [showCollaborators, setShowCollaborators] = useState(false);
   const [showFileWatcher, setShowFileWatcher] = useState(false);
   const [showDeployHistory, setShowDeployHistory] = useState(false);
   const [showSSL, setShowSSL] = useState(false);
@@ -1940,10 +1942,25 @@ export default function ProjectPage({ id }: { id: string }) {
               {shareCopied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
             </Button>
           </div>
-          <div className="text-[10px] text-muted-foreground">
+          <div className="text-[10px] text-muted-foreground mb-2">
             {project?.isPublic ? "Anyone with the link can view" : "Only collaborators can access"}
           </div>
+          <button
+            onClick={() => { setShowCollaborators(true); setShowShareMenu(false); }}
+            className="w-full text-xs px-2 py-1.5 rounded bg-primary/10 hover:bg-primary/20 text-primary transition-colors flex items-center justify-center gap-1.5 font-medium"
+            data-testid="button-manage-collaborators"
+          >
+            Manage collaborators
+          </button>
         </div>
+      )}
+
+      {showCollaborators && id && (
+        <CollaboratorsPanel
+          projectId={id}
+          canManage={true}
+          onClose={() => setShowCollaborators(false)}
+        />
       )}
 
       <div className="flex-1 flex overflow-hidden">

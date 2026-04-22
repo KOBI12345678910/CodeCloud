@@ -52,3 +52,4 @@ export * from "./ai-messages";
 export * from "./credits-ledger";
 export * from "./task-usage";
 export * from "./invoices";
+export * from "./yjs-documents";

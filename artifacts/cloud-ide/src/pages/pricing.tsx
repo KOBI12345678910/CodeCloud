@@ -1,123 +1,45 @@
-import { useState } from "react";
-import { Link } from "wouter";
-import {
-  Code2, Check, X, ArrowRight, Lock, Shield, Cloud, Zap, ChevronDown,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "wouter";
+import { useSession, useUser } from "@clerk/react";
+import { Code2, Check, ArrowRight, Lock, Shield, Cloud, ChevronDown, Sparkles, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const plans = [
-  {
-    name: "Free",
-    monthlyPrice: 0,
-    yearlyPrice: 0,
-    desc: "For individuals learning and experimenting",
-    features: {
-      "Projects": "1",
-      "Storage": "512 MB",
-      "Compute": "Shared",
-      "Deployments / month": "5",
-      "Collaborators": "None",
-      "Community support": true,
-      "Custom domains": false,
-      "Private projects": false,
-      "API access": false,
-      "Priority support": false,
-      "Audit logs": false,
-      "SSO / SAML": false,
-      "SLA guarantee": false,
-    },
-    cta: "Get Started Free",
-    highlight: false,
-  },
-  {
-    name: "Pro",
-    monthlyPrice: 12,
-    yearlyPrice: 10,
-    desc: "For professionals building production apps",
-    features: {
-      "Projects": "Unlimited",
-      "Storage": "2 GB",
-      "Compute": "2 vCPU / 4 GB",
-      "Deployments / month": "Unlimited",
-      "Collaborators": "3 per project",
-      "Community support": true,
-      "Custom domains": true,
-      "Private projects": true,
-      "API access": true,
-      "Priority support": true,
-      "Audit logs": false,
-      "SSO / SAML": false,
-      "SLA guarantee": false,
-    },
-    cta: "Start Free Trial",
-    highlight: true,
-  },
-  {
-    name: "Team",
-    monthlyPrice: 29,
-    yearlyPrice: 23,
-    desc: "For teams building together at scale",
-    features: {
-      "Projects": "Unlimited",
-      "Storage": "5 GB",
-      "Compute": "4 vCPU / 8 GB",
-      "Deployments / month": "Unlimited",
-      "Collaborators": "Unlimited",
-      "Community support": true,
-      "Custom domains": true,
-      "Private projects": true,
-      "API access": true,
-      "Priority support": true,
-      "Audit logs": true,
-      "SSO / SAML": false,
-      "SLA guarantee": false,
-    },
-    cta: "Start Team Trial",
-    highlight: false,
-  },
-  {
-    name: "Enterprise",
-    monthlyPrice: 99,
-    yearlyPrice: 79,
-    desc: "For organizations that need full control",
-    features: {
-      "Projects": "Unlimited",
-      "Storage": "10 GB",
-      "Compute": "Dedicated 8 vCPU / 16 GB",
-      "Deployments / month": "Unlimited",
-      "Collaborators": "Unlimited",
-      "Community support": true,
-      "Custom domains": true,
-      "Private projects": true,
-      "API access": true,
-      "Priority support": true,
-      "Audit logs": true,
-      "SSO / SAML": true,
-      "SLA guarantee": true,
-    },
-    cta: "Contact Sales",
-    highlight: false,
-  },
+interface PlanFromApi {
+  id: "free" | "pro" | "team";
+  name: string;
+  priceUsd: number;
+  description: string;
+  includedCreditsUsd: number;
+  features: string[];
+  stripeConfigured: boolean;
+}
+
+interface CurrentSub {
+  plan: "free" | "pro" | "team";
+  subscription: { status: string; planId: string } | null;
+}
+
+const API = `${import.meta.env.VITE_API_URL || ""}/api`;
+
+const FALLBACK_PLANS: PlanFromApi[] = [
+  { id: "free", name: "Free", priceUsd: 0, description: "For individuals learning and experimenting.", includedCreditsUsd: 0, stripeConfigured: true, features: ["1 active project", "512 MB storage", "Shared compute", "5 deployments / month", "Community support"] },
+  { id: "pro", name: "Pro", priceUsd: 20, description: "For professionals shipping production apps.", includedCreditsUsd: 10, stripeConfigured: false, features: ["Unlimited projects", "2 GB storage", "2 vCPU / 4 GB compute", "Unlimited deployments", "$10 of AI credits included monthly", "Custom domains, private projects", "Priority email support"] },
+  { id: "team", name: "Team", priceUsd: 40, description: "For teams building together at scale.", includedCreditsUsd: 25, stripeConfigured: false, features: ["Everything in Pro", "5 GB storage", "4 vCPU / 8 GB compute", "Unlimited collaborators", "$25 of AI credits included monthly", "Audit logs", "Priority chat support"] },
 ];
 
-const faqs = [
-  { q: "Can I try Pro for free?", a: "Yes! Every paid plan comes with a 14-day free trial. No credit card required to start." },
-  { q: "What happens when I exceed my plan limits?", a: "We'll notify you and give you a grace period to upgrade. Your projects will never be deleted." },
-  { q: "Can I change plans at any time?", a: "Absolutely. Upgrade, downgrade, or cancel anytime. Changes take effect immediately with prorated billing." },
-  { q: "Do you offer discounts for startups?", a: "Yes, we offer 50% off Pro for verified startups in their first year. Contact us for details." },
-  { q: "What payment methods do you accept?", a: "We accept all major credit cards, PayPal, and wire transfers for Enterprise customers." },
-  { q: "Is there a self-hosted option?", a: "Enterprise customers can deploy CodeCloud on their own infrastructure. Contact our sales team to learn more." },
-  { q: "How does the annual billing discount work?", a: "When you choose annual billing, you save 20% compared to monthly pricing. You'll be billed once per year." },
+const FAQS = [
+  { q: "Can I switch plans at any time?", a: "Yes. Upgrade, downgrade, or cancel anytime from the billing page. Changes are prorated." },
+  { q: "What happens if I run out of AI credits?", a: "Tasks pause until you top up. You can also enable auto-top-up so your balance refills automatically." },
+  { q: "Are AI credits included with paid plans?", a: "Yes. Pro includes $10 of credits per month and Team includes $25. You can buy more anytime as pay-as-you-go." },
+  { q: "Do you offer refunds?", a: "We refund unused subscription time on cancellation. Pay-as-you-go credits are non-refundable once purchased." },
+  { q: "What payment methods do you accept?", a: "All major credit and debit cards via Stripe. Wire transfer is available for Team plans on request." },
 ];
 
 function FaqItem({ faq }: { faq: { q: string; a: string } }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border border-border/50 rounded-xl bg-card overflow-hidden" data-testid={`faq-item`}>
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between p-5 text-left hover:bg-muted/30 transition-colors"
-      >
+    <div className="border border-border/50 rounded-xl bg-card overflow-hidden">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between p-5 text-left hover:bg-muted/30 transition-colors">
         <span className="font-semibold text-sm pr-4">{faq.q}</span>
         <ChevronDown className={`w-4 h-4 shrink-0 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
@@ -129,7 +51,64 @@ function FaqItem({ faq }: { faq: { q: string; a: string } }) {
 }
 
 export default function PricingPage() {
-  const [annual, setAnnual] = useState(true);
+  const { session } = useSession();
+  const { isSignedIn } = useUser();
+  const [, setLocation] = useLocation();
+  const [plans, setPlans] = useState<PlanFromApi[]>(FALLBACK_PLANS);
+  const [current, setCurrent] = useState<CurrentSub | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [cancelled, setCancelled] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("stripe") === "cancelled") {
+      setCancelled(true);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("stripe");
+      window.history.replaceState({}, "", url.toString());
+    }
+    fetch(`${API}/billing/plans`).then((r) => r.json()).then((d) => { if (d?.plans?.length) setPlans(d.plans); }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!isSignedIn || !session) return;
+    (async () => {
+      try {
+        const t = await session.getToken();
+        const r = await fetch(`${API}/billing/subscription`, { headers: t ? { Authorization: `Bearer ${t}` } : undefined });
+        if (r.ok) setCurrent(await r.json());
+      } catch { /* ignore */ }
+    })();
+  }, [isSignedIn, session]);
+
+  const subscribe = async (planId: "pro" | "team") => {
+    setError(null);
+    if (!isSignedIn) { setLocation(`/sign-in?redirect=/pricing`); return; }
+    setBusy(planId);
+    try {
+      const t = await session?.getToken();
+      const r = await fetch(`${API}/billing/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) },
+        body: JSON.stringify({ plan: planId }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data?.error || "Could not start checkout.");
+      if (data?.checkoutUrl) window.location.href = data.checkoutUrl;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Subscription failed.");
+    } finally { setBusy(null); }
+  };
+
+  const ctaFor = (plan: PlanFromApi) => {
+    if (plan.id === "free") {
+      return { label: isSignedIn ? "You're on Free" : "Get started free", disabled: false, action: () => setLocation(isSignedIn ? "/dashboard" : "/sign-up") };
+    }
+    if (current?.plan === plan.id) return { label: "Current plan", disabled: true, action: () => {} };
+    if (!plan.stripeConfigured) return { label: "Coming soon", disabled: true, action: () => {} };
+    return { label: busy === plan.id ? "Redirecting…" : `Upgrade to ${plan.name}`, disabled: busy !== null, action: () => void subscribe(plan.id as "pro" | "team") };
+  };
 
   return (
     <div className="min-h-screen bg-background" data-testid="pricing-page">
@@ -137,19 +116,19 @@ export default function PricingPage() {
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/">
             <div className="flex items-center gap-2 cursor-pointer">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <Code2 className="w-5 h-5 text-primary-foreground" />
-              </div>
+              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center"><Code2 className="w-5 h-5 text-primary-foreground" /></div>
               <span className="text-xl font-bold tracking-tight">CodeCloud</span>
             </div>
           </Link>
           <div className="flex items-center gap-3">
-            <Link href="/sign-in">
-              <Button variant="ghost" size="sm">Sign In</Button>
-            </Link>
-            <Link href="/sign-up">
-              <Button size="sm">Get Started</Button>
-            </Link>
+            {isSignedIn ? (
+              <Link href="/billing"><Button variant="ghost" size="sm">Billing</Button></Link>
+            ) : (
+              <>
+                <Link href="/sign-in"><Button variant="ghost" size="sm">Sign In</Button></Link>
+                <Link href="/sign-up"><Button size="sm">Get Started</Button></Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -157,111 +136,81 @@ export default function PricingPage() {
       <main>
         <section className="py-20 px-6">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-              Plans that scale with you
-            </h1>
-            <p className="mt-4 text-lg text-muted-foreground">
-              Start free, upgrade when you're ready. All plans include the full IDE experience.
-            </p>
-            <div className="mt-8 inline-flex items-center gap-3 bg-muted/50 p-1 rounded-full" data-testid="billing-toggle">
-              <button
-                onClick={() => setAnnual(false)}
-                className={`px-5 py-2 text-sm rounded-full transition-all ${!annual ? "bg-background shadow text-foreground" : "text-muted-foreground"}`}
-                data-testid="toggle-monthly"
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setAnnual(true)}
-                className={`px-5 py-2 text-sm rounded-full transition-all ${annual ? "bg-background shadow text-foreground" : "text-muted-foreground"}`}
-                data-testid="toggle-annual"
-              >
-                Annual <span className="text-primary font-medium ml-1">-20%</span>
-              </button>
-            </div>
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Simple, fair pricing</h1>
+            <p className="mt-4 text-lg text-muted-foreground">Start free. Upgrade when you ship more. Cancel anytime.</p>
           </div>
+
+          {(error || cancelled) && (
+            <div className="max-w-3xl mx-auto mt-8 px-4 py-3 rounded-xl border border-yellow-500/30 bg-yellow-500/10 flex items-center gap-3 text-sm">
+              <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0" />
+              <span>{error ?? "Checkout cancelled. No charge was made."}</span>
+            </div>
+          )}
         </section>
 
         <section className="px-6 pb-20">
-          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
             {plans.map((plan) => {
-              const price = annual ? `$${plan.yearlyPrice}` : `$${plan.monthlyPrice}`;
+              const cta = ctaFor(plan);
+              const highlight = plan.id === "pro";
               return (
                 <div
-                  key={plan.name}
-                  className={`relative p-6 rounded-2xl border flex flex-col ${
-                    plan.highlight
-                      ? "border-primary bg-primary/5 shadow-xl shadow-primary/10 lg:scale-[1.03]"
-                      : "border-border/50 bg-card"
+                  key={plan.id}
+                  className={`relative p-7 rounded-2xl border flex flex-col ${
+                    highlight ? "border-primary bg-primary/5 shadow-xl shadow-primary/10 lg:scale-[1.03]" : "border-border/50 bg-card"
                   }`}
-                  data-testid={`plan-${plan.name.toLowerCase()}`}
+                  data-testid={`plan-${plan.id}`}
                 >
-                  {plan.highlight && (
+                  {highlight && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full">
                       Most Popular
                     </div>
                   )}
-                  <h3 className="text-lg font-bold">{plan.name}</h3>
+                  <h3 className="text-xl font-bold">{plan.name}</h3>
                   <div className="mt-3 flex items-baseline gap-1">
-                    {plan.monthlyPrice === 0 ? (
-                      <>
-                        <span className="text-4xl font-bold">$0</span>
-                        <span className="text-muted-foreground text-sm">/forever</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-4xl font-bold">{price}</span>
-                        <span className="text-muted-foreground text-sm">/mo</span>
-                      </>
-                    )}
+                    <span className="text-5xl font-bold">${plan.priceUsd}</span>
+                    <span className="text-muted-foreground text-sm">{plan.priceUsd === 0 ? "/forever" : "/mo"}</span>
                   </div>
-                  {annual && plan.monthlyPrice > 0 && (
-                    <p className="text-xs text-primary mt-1">
-                      Save ${(plan.monthlyPrice - plan.yearlyPrice) * 12}/year
-                    </p>
+                  <p className="mt-2 text-sm text-muted-foreground">{plan.description}</p>
+                  {plan.includedCreditsUsd > 0 && (
+                    <div className="mt-3 inline-flex items-center gap-1.5 text-xs text-primary bg-primary/10 px-2.5 py-1 rounded-full self-start">
+                      <Sparkles className="w-3 h-3" /> ${plan.includedCreditsUsd} of AI credits / month included
+                    </div>
                   )}
-                  <p className="mt-2 text-sm text-muted-foreground">{plan.desc}</p>
-                  <Link href={plan.name === "Enterprise" ? "/" : "/sign-up"}>
-                    <Button className="w-full mt-5 h-10" variant={plan.highlight ? "default" : "outline"} data-testid={`cta-${plan.name.toLowerCase()}`}>
-                      {plan.cta} {plan.highlight && <ArrowRight className="w-4 h-4 ml-1" />}
-                    </Button>
-                  </Link>
-                  <div className="mt-6 pt-6 border-t border-border/30 space-y-2.5 flex-1">
-                    {Object.entries(plan.features).map(([key, value]) => (
-                      <div key={key} className="flex items-center justify-between text-sm gap-2">
-                        <span className="text-muted-foreground text-xs">{key}</span>
-                        {typeof value === "boolean" ? (
-                          value ? <Check className="w-3.5 h-3.5 text-primary shrink-0" /> : <X className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0" />
-                        ) : (
-                          <span className="font-medium text-xs whitespace-nowrap">{value}</span>
-                        )}
-                      </div>
+                  <Button
+                    onClick={cta.action}
+                    disabled={cta.disabled}
+                    className="w-full mt-6 h-11"
+                    variant={highlight ? "default" : "outline"}
+                    data-testid={`cta-${plan.id}`}
+                  >
+                    {cta.label}{highlight && !cta.disabled && <ArrowRight className="w-4 h-4 ml-1" />}
+                  </Button>
+                  <ul className="mt-7 pt-6 border-t border-border/30 space-y-3 flex-1">
+                    {plan.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-sm">
+                        <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                        <span className="text-foreground/80">{f}</span>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 </div>
               );
             })}
           </div>
+
+          <p className="max-w-2xl mx-auto text-center text-xs text-muted-foreground mt-8">
+            Need something custom — SSO, dedicated infrastructure, or invoicing?{" "}
+            <Link href="/support" className="text-primary hover:underline">Talk to us</Link>.
+          </p>
         </section>
 
         <section className="py-20 px-6 border-t border-border/50">
           <div className="max-w-3xl mx-auto">
-            <h2 className="text-3xl font-bold text-center mb-10" data-testid="faq-heading">Frequently asked questions</h2>
+            <h2 className="text-3xl font-bold text-center mb-10">Frequently asked questions</h2>
             <div className="space-y-3">
-              {faqs.map((faq) => (
-                <FaqItem key={faq.q} faq={faq} />
-              ))}
+              {FAQS.map((faq) => <FaqItem key={faq.q} faq={faq} />)}
             </div>
-          </div>
-        </section>
-
-        <section className="py-20 px-6 border-t border-border/50">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-3xl font-bold mb-4">Need a custom plan?</h2>
-            <p className="text-muted-foreground mb-8">
-              Enterprise customers get dedicated support, custom integrations, and flexible billing. Let's talk.
-            </p>
-            <Button size="lg" className="px-10 h-12" data-testid="button-contact-sales">Contact Sales</Button>
           </div>
         </section>
       </main>

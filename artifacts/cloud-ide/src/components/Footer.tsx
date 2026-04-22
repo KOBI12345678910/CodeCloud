@@ -14,20 +14,22 @@ const COLUMNS = [
   {
     title: "Resources",
     links: [
-      { label: "Docs", href: "/api-docs" },
+      { label: "Docs", href: "/docs" },
       { label: "API Reference", href: "/api-docs" },
-      { label: "Blog", href: "/changelog" },
+      { label: "Blog", href: "/blog" },
       { label: "Status", href: "/status" },
+      { label: "Security", href: "/security" },
     ],
   },
   {
     title: "Company",
     links: [
-      { label: "About", href: "/" },
-      { label: "Careers", href: "/" },
-      { label: "Contact", href: "mailto:support@codecloud.dev" },
-      { label: "Privacy", href: "/" },
-      { label: "Terms", href: "/" },
+      { label: "About", href: "/about" },
+      { label: "Careers", href: "/careers" },
+      { label: "Contact", href: "/support" },
+      { label: "Privacy", href: "/privacy" },
+      { label: "Terms", href: "/terms" },
+      { label: "Compliance", href: "/compliance" },
     ],
   },
 ];
@@ -108,11 +110,14 @@ export default function Footer() {
             &copy; {new Date().getFullYear()} CodeCloud. All rights reserved.
           </p>
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <Link href="/">
+            <Link href="/privacy">
               <span className="hover:text-foreground transition-colors cursor-pointer">Privacy Policy</span>
             </Link>
-            <Link href="/">
+            <Link href="/terms">
               <span className="hover:text-foreground transition-colors cursor-pointer">Terms of Service</span>
+            </Link>
+            <Link href="/compliance">
+              <span className="hover:text-foreground transition-colors cursor-pointer">Compliance</span>
             </Link>
           </div>
         </div>

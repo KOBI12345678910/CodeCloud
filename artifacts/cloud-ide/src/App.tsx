@@ -88,13 +88,47 @@ function HomeRedirect() {
 }
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+  const [location] = useLocation();
+  const redirectTarget = `/sign-in?redirect=${encodeURIComponent(location)}`;
   return (
     <>
       <Show when="signed-in">
         <Component />
       </Show>
       <Show when="signed-out">
-        <Redirect to="/" />
+        <Redirect to={redirectTarget} />
+      </Show>
+    </>
+  );
+}
+
+function AccessDenied() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background px-6" data-testid="access-denied">
+      <div className="max-w-md text-center">
+        <div className="text-6xl font-bold text-primary mb-4">403</div>
+        <h1 className="text-2xl font-semibold mb-2">Access Denied</h1>
+        <p className="text-muted-foreground mb-6">You don't have permission to view this page.</p>
+        <a href={`${basePath}/`} className="inline-block px-5 py-2.5 rounded-md bg-primary text-primary-foreground font-medium hover:opacity-90 transition" data-testid="link-go-home">
+          Go home
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function AdminRoute({ component: Component }: { component: React.ComponentType }) {
+  const { user } = useClerk();
+  const [location] = useLocation();
+  const role = (user?.publicMetadata as { role?: string } | undefined)?.role;
+  const isAdmin = role === "admin" || role === "owner";
+  return (
+    <>
+      <Show when="signed-out">
+        <Redirect to={`/sign-in?redirect=${encodeURIComponent(location)}`} />
+      </Show>
+      <Show when="signed-in">
+        {isAdmin ? <Component /> : <AccessDenied />}
       </Show>
     </>
   );
@@ -187,8 +221,11 @@ function ClerkProviderWithRoutes() {
               <ProtectedRoute component={SettingsPage} />
             </Route>
             <Route path="/admin">
-              <ProtectedRoute component={AdminPage} />
+              <AdminRoute component={AdminPage} />
             </Route>
+            <Route path="/contact"><Redirect to="/support" /></Route>
+            <Route path="/project"><Redirect to="/dashboard" /></Route>
+            <Route path="/deploy"><Redirect to="/docs" /></Route>
             <Route path="/changelog" component={ChangelogPage} />
             <Route path="/product" component={ProductPage} />
             <Route path="/solutions" component={SolutionsPage} />
@@ -267,9 +304,7 @@ function ClerkProviderWithRoutes() {
             <Route path="/onboarding">
               <ProtectedRoute component={OnboardingPage} />
             </Route>
-            <Route path="/support">
-              <ProtectedRoute component={SupportPage} />
-            </Route>
+            <Route path="/support" component={SupportPage} />
             <Route path="/import">
               <ProtectedRoute component={ImportProjectPage} />
             </Route>

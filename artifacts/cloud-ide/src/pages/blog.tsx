@@ -48,19 +48,21 @@ export default function BlogPage() {
         <section className="px-6 py-12 border-t border-border/50">
           <div className="max-w-4xl mx-auto space-y-4">
             {POSTS.map((p) => (
-              <Link key={p.title} href="/blog">
-                <article className="group p-6 rounded-xl border border-border/50 bg-card hover:border-primary/30 transition-all duration-300 cursor-pointer">
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
-                    <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary">{p.tag}</span>
-                    <span className="flex items-center gap-1.5"><Calendar className="w-3 h-3" /> {p.date}</span>
-                  </div>
-                  <h2 className="text-2xl font-semibold group-hover:text-primary transition-colors">{p.title}</h2>
-                  <p className="mt-2 text-muted-foreground leading-relaxed">{p.excerpt}</p>
-                  <div className="mt-4 inline-flex items-center gap-1.5 text-sm text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                    Read more <ArrowRight className="w-3.5 h-3.5" />
-                  </div>
-                </article>
-              </Link>
+              <article
+                key={p.title}
+                className="group relative p-6 rounded-xl border border-border/50 bg-card transition-all duration-300 opacity-90"
+                data-testid={`blog-card-${p.title.toLowerCase().replace(/\s+/g, "-")}`}
+              >
+                <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                  Coming soon
+                </span>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
+                  <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary">{p.tag}</span>
+                  <span className="flex items-center gap-1.5"><Calendar className="w-3 h-3" /> {p.date}</span>
+                </div>
+                <h2 className="text-2xl font-semibold">{p.title}</h2>
+                <p className="mt-2 text-muted-foreground leading-relaxed">{p.excerpt}</p>
+              </article>
             ))}
           </div>
         </section>

@@ -48,6 +48,10 @@ import ImportProjectPage from "@/pages/import-project";
 import LiveSharePage from "@/pages/live-share";
 import TemplateStorePage from "@/pages/template-store";
 import ErrorTrackingPage from "@/pages/error-tracking";
+import {
+  ProductPage, SolutionsPage, BlogPage, CareersPage,
+  DocsPage, AboutPage, TermsPage, PrivacyPage,
+} from "@/pages/marketing-stub";
 import NotFound from "@/pages/not-found";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -258,6 +262,14 @@ function ClerkProviderWithRoutes() {
             <Route path="/error-tracking">
               <ProtectedRoute component={ErrorTrackingPage} />
             </Route>
+            <Route path="/product" component={ProductPage} />
+            <Route path="/solutions" component={SolutionsPage} />
+            <Route path="/blog" component={BlogPage} />
+            <Route path="/careers" component={CareersPage} />
+            <Route path="/docs" component={DocsPage} />
+            <Route path="/about" component={AboutPage} />
+            <Route path="/terms" component={TermsPage} />
+            <Route path="/privacy" component={PrivacyPage} />
             <Route component={NotFound} />
           </Switch>
           <ProjectSwitcher />

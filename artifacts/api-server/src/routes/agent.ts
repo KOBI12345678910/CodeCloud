@@ -24,9 +24,18 @@ router.post("/agent/tasks", requireAuth, async (req, res): Promise<void> => {
   if (!(await checkProjectAccess(projectId, userId))) { res.status(403).json({ error: "Access denied" }); return; }
   const m = (["plan", "build", "background"].includes(mode) ? mode : "build") as AgentMode;
   const t = (["standard", "power", "max"].includes(tier) ? tier : "standard") as AgentTier;
-  const created = await createTask({ projectId, userId, conversationId: conversationId ?? null, prompt: String(prompt), mode: m, tier: t });
-  setImmediate(() => { runTask(created.taskId).catch(() => {}); });
-  res.status(201).json(created);
+  try {
+    const created = await createTask({ projectId, userId, conversationId: conversationId ?? null, prompt: String(prompt), mode: m, tier: t });
+    setImmediate(() => { runTask(created.taskId).catch(() => {}); });
+    res.status(201).json(created);
+  } catch (err) {
+    const e = err as { code?: string; message?: string; balance?: number };
+    const code = e.code;
+    const message = e.message ?? "Failed to create task";
+    if (code === "no_credits") { res.status(402).json({ error: message, code, balanceUsd: (e.balance ?? 0) / 1_000_000 }); return; }
+    if (code === "concurrency_limit" || code === "model_not_allowed") { res.status(403).json({ error: message, code }); return; }
+    res.status(400).json({ error: message });
+  }
 });
 
 router.get("/agent/tasks", requireAuth, async (req, res): Promise<void> => {

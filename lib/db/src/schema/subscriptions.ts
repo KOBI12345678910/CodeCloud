@@ -9,7 +9,7 @@ export const subscriptionsTable = pgTable("subscriptions", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
-  stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
+  stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }).unique(),
   status: subscriptionStatusEnum("subscription_status").default("active").notNull(),
   planId: varchar("plan_id", { length: 50 }).notNull(),
   currentPeriodStart: timestamp("current_period_start", { withTimezone: true }),

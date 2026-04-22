@@ -1,10 +1,18 @@
 import { db, agentTasksTable, agentEventsTable, aiConversationsTable } from "@workspace/db";
 import { eq, and, asc, desc } from "drizzle-orm";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
+import type Anthropic from "@anthropic-ai/sdk";
+type AnthMessageParam = Anthropic.Messages.MessageParam;
+type AnthUsage = Anthropic.Messages.Usage & { cache_read_input_tokens?: number };
 import { AGENT_TOOLS, dispatchTool, type ToolContext } from "./tools";
 import { createCheckpoint } from "./checkpoints";
 import { emitAgentEvent, type AgentEventType } from "./realtime";
 import { languageInstructionForConversation } from "./lang-detect";
+import { recordUsage, checkpointUsage } from "../credits/usage-recorder";
+import { reserve, settleReservation, getBalanceMicroUsd } from "../credits/ledger";
+import { preflight } from "../credits/entitlements";
+import { transition, toDbState, type LifecycleState } from "./lifecycle";
+import { db as cdb, aiMessagesTable } from "@workspace/db";
 
 export type AgentTier = "standard" | "power" | "max";
 export type AgentMode = "plan" | "build" | "background";
@@ -64,12 +72,47 @@ async function appendEvent(taskId: string, projectId: string, type: AgentEventTy
   emitAgentEvent({ taskId, projectId, seq, type, payload, at: Date.now() });
 }
 
-async function setState(taskId: string, projectId: string, state: typeof agentTasksTable.$inferSelect.state, extra: Partial<typeof agentTasksTable.$inferInsert> = {}): Promise<void> {
-  await db.update(agentTasksTable).set({ state, ...extra }).where(eq(agentTasksTable.id, taskId));
-  await appendEvent(taskId, projectId, "state_change", { state });
+/**
+ * Track each task's named lifecycle state in-process (Queued/Planning/Working/
+ * Review/Done/Failed/Cancelled) and validate transitions against the explicit
+ * state machine in lifecycle.ts. The persisted state column uses the
+ * pre-existing 6-value enum, so each named state is mapped via toDbState().
+ */
+const lifecycleByTask = new Map<string, LifecycleState>();
+
+async function setState(
+  taskId: string,
+  projectId: string,
+  next: LifecycleState,
+  extra: Partial<typeof agentTasksTable.$inferInsert> = {},
+): Promise<void> {
+  const current = lifecycleByTask.get(taskId) ?? "Queued";
+  const transitioned = transition(current, next);
+  lifecycleByTask.set(taskId, transitioned);
+  await db.update(agentTasksTable)
+    .set({ state: toDbState(transitioned), ...extra })
+    .where(eq(agentTasksTable.id, taskId));
+  await appendEvent(taskId, projectId, "state_change", {
+    state: toDbState(transitioned),
+    lifecycle: transitioned,
+  });
 }
 
-export async function createTask(opts: CreateTaskOptions): Promise<{ taskId: string; conversationId: string }> {
+// Maximum credit reservation per task (USD). Settled down to actual usage on
+// completion or failure — anything past actual is released back to the user.
+const TIER_RESERVATION_USD: Record<AgentTier, number> = { standard: 1, power: 5, max: 25 };
+
+interface CreateTaskError extends Error { code?: string; balance?: number; }
+
+export async function createTask(opts: CreateTaskOptions): Promise<{ taskId: string; conversationId: string; preflight: { ok: boolean; reason?: string; code?: string; balance?: number } }> {
+  const model = TIER_TO_MODEL[opts.tier];
+  const reservationMicroUsd = Math.round(TIER_RESERVATION_USD[opts.tier] * 1_000_000);
+  const pf = await preflight(opts.userId, model, reservationMicroUsd);
+  if (!pf.ok) {
+    const err: CreateTaskError = new Error(pf.reason || "Preflight failed");
+    err.code = pf.code; err.balance = pf.balance;
+    throw err;
+  }
   let conversationId = opts.conversationId;
   if (!conversationId) {
     const [conv] = await db.insert(aiConversationsTable).values({
@@ -77,13 +120,48 @@ export async function createTask(opts: CreateTaskOptions): Promise<{ taskId: str
     }).returning();
     conversationId = conv.id;
   }
-  const model = TIER_TO_MODEL[opts.tier];
   const [task] = await db.insert(agentTasksTable).values({
     conversationId, projectId: opts.projectId, userId: opts.userId,
     prompt: opts.prompt, mode: opts.mode, tier: opts.tier, model, state: "queued",
   }).returning();
+  // Atomic reservation: holds estimated max cost so concurrent tasks cannot
+  // overrun the balance. Settled down to actual usage when the task ends.
+  const reserveResult = await reserve(opts.userId, reservationMicroUsd, task.id, "Task reservation (hold)");
+  if (!reserveResult.ok) {
+    await db.delete(agentTasksTable).where(eq(agentTasksTable.id, task.id));
+    const err: CreateTaskError = new Error("Insufficient credits to reserve task");
+    err.code = "no_credits"; err.balance = reserveResult.balanceMicroUsd;
+    throw err;
+  }
+  await cdb.insert(aiMessagesTable).values({
+    conversationId, role: "user", content: opts.prompt, toolCalls: { taskId: task.id } as object,
+  });
   await appendEvent(task.id, opts.projectId, "user_message", { content: opts.prompt });
-  return { taskId: task.id, conversationId };
+  return { taskId: task.id, conversationId, preflight: { ok: true, balance: pf.balance } };
+}
+
+/** Locate the active (un-settled, un-released) reservation ledger row for a task. */
+async function findReservationId(taskId: string, userId: string): Promise<string | null> {
+  const { creditsLedgerTable } = await import("@workspace/db");
+  const { sql } = await import("drizzle-orm");
+  const rows = await db.select({ id: creditsLedgerTable.id, metadata: creditsLedgerTable.metadata })
+    .from(creditsLedgerTable)
+    .where(and(
+      eq(creditsLedgerTable.taskId, taskId),
+      eq(creditsLedgerTable.userId, userId),
+      eq(creditsLedgerTable.kind, "task_debit"),
+      sql`${creditsLedgerTable.metadata}->>'reservation' = 'true'`,
+    ));
+  for (const r of rows) {
+    const [released] = await db.select({ id: creditsLedgerTable.id })
+      .from(creditsLedgerTable)
+      .where(sql`${creditsLedgerTable.userId} = ${userId}
+        AND (${creditsLedgerTable.metadata}->>'releasesReservation' = ${r.id}
+             OR ${creditsLedgerTable.metadata}->>'settlesReservation' = ${r.id})`)
+      .limit(1);
+    if (!released) return r.id;
+  }
+  return null;
 }
 
 interface AnthMsg {
@@ -102,7 +180,50 @@ export async function runTask(taskId: string, opts: { approved?: boolean } = {})
   const model = task.model;
   const pricing = TIER_PRICING[tier];
 
-  await setState(taskId, projectId, "active", { startedAt: new Date() });
+  // Hydrate the in-process lifecycle from the persisted DB state so that a
+  // resumed task (e.g. queued -> Review -> approved -> Working) re-uses a
+  // valid transition path. Without this, a fresh process always assumes
+  // Queued and would reject Review -> Planning on resume.
+  const persistedLifecycle: LifecycleState =
+    task.state === "awaiting_approval" ? "Review" :
+    task.state === "active" ? "Working" :
+    task.state === "completed" ? "Done" :
+    task.state === "failed" ? "Failed" :
+    task.state === "cancelled" ? "Cancelled" :
+    "Queued";
+  lifecycleByTask.set(taskId, persistedLifecycle);
+
+  if (persistedLifecycle === "Review" && opts.approved) {
+    // Resuming an approved plan: skip Planning and go straight to Working.
+    await setState(taskId, projectId, "Working");
+  } else if (persistedLifecycle === "Queued") {
+    await setState(taskId, projectId, "Planning", { startedAt: new Date() });
+    await setState(taskId, projectId, "Working");
+  } else {
+    // Already Planning/Working from a prior resume — just ensure DB row state.
+    await setState(taskId, projectId, "Working");
+  }
+
+  // If the prior phase settled the original reservation (e.g. plan-mode
+  // pause for review), re-reserve credits for this run so resumed work is
+  // again capped against balance and held atomically.
+  {
+    const existing = await findReservationId(taskId, task.userId);
+    if (!existing) {
+      const reservationMicroUsd = Math.round(TIER_RESERVATION_USD[tier] * 1_000_000);
+      const r = await reserve(task.userId, reservationMicroUsd, taskId, "Task reservation (resume)");
+      if (!r.ok) {
+        await setState(taskId, projectId, "Failed", {
+          completedAt: new Date(),
+          errorMessage: "Insufficient credits to resume task",
+        });
+        await appendEvent(taskId, projectId, "tool_error", {
+          error: "no_credits", balanceUsd: r.balanceMicroUsd / 1_000_000,
+        });
+        return;
+      }
+    }
+  }
 
   const conv = task.conversationId
     ? (await db.select().from(aiConversationsTable).where(eq(aiConversationsTable.id, task.conversationId)))[0]
@@ -119,6 +240,10 @@ export async function runTask(taskId: string, opts: { approved?: boolean } = {})
   let totalOut = task.outputTokens;
   let actionCount = task.actionCount;
   let assistantTextOut = "";
+  let stepIndex = 0;
+  let consumedMicroUsd = 0;
+  let lastCheckpointMicroUsd = 0;
+  const totalReservedMicroUsd = Math.round(TIER_RESERVATION_USD[tier] * 1_000_000);
 
   let cpTimer: NodeJS.Timeout | null = null;
   if (task.mode !== "plan") {
@@ -132,7 +257,21 @@ export async function runTask(taskId: string, opts: { approved?: boolean } = {})
   try {
     for (let turn = 0; turn < MAX_TURNS; turn++) {
       if (isCancelled(taskId)) {
-        await setState(taskId, projectId, "cancelled", { completedAt: new Date(), errorMessage: "Cancelled by user" });
+        // Settle the reservation against work consumed so far. The unused
+        // portion is released by settleReservation's positive refund row,
+        // so cancelled tasks do not leak credits.
+        const reservationId = await findReservationId(taskId, task.userId);
+        const out = await settleReservation(task.userId, reservationId, consumedMicroUsd, taskId, "Task cancelled");
+        const refundedMicroUsd = Math.max(0, totalReservedMicroUsd - consumedMicroUsd);
+        await appendEvent(taskId, projectId, "cost_update", {
+          ledgerDebitedUsd: consumedMicroUsd / 1_000_000,
+          refundedUsd: refundedMicroUsd / 1_000_000,
+          balanceUsd: out.balanceAfterMicroUsd / 1_000_000,
+          final: true,
+        });
+        await setState(taskId, projectId, "Cancelled", { completedAt: new Date(), errorMessage: "Cancelled by user" });
+        if (cpTimer) clearInterval(cpTimer);
+        cancelled.delete(taskId);
         return;
       }
 
@@ -141,16 +280,28 @@ export async function runTask(taskId: string, opts: { approved?: boolean } = {})
         max_tokens: MAX_OUTPUT_TOKENS,
         system: SYSTEM_PROMPT + `\n\nMode: ${task.mode}. Project ID: ${projectId}.\n\n${languageInstructionForConversation(task.conversationId, task.prompt)}`,
         tools: AGENT_TOOLS.map((t) => ({ name: t.name, description: t.description, input_schema: t.input_schema as { type: "object" } })),
-        messages: messages as any,
+        messages: messages as AnthMessageParam[],
       });
 
-      totalIn += response.usage?.input_tokens ?? 0;
-      totalOut += response.usage?.output_tokens ?? 0;
-      const cost = (totalIn * pricing.in + totalOut * pricing.out) / 1_000_000;
-      await db.update(agentTasksTable).set({
-        inputTokens: totalIn, outputTokens: totalOut, costUsd: cost, actionCount,
-      }).where(eq(agentTasksTable.id, taskId));
-      await appendEvent(taskId, projectId, "cost_update", { inputTokens: totalIn, outputTokens: totalOut, costUsd: cost });
+      const usage = response.usage as AnthUsage | undefined;
+      const stepInput = usage?.input_tokens ?? 0;
+      const stepOutput = usage?.output_tokens ?? 0;
+      const stepCachedInput = usage?.cache_read_input_tokens ?? 0;
+      totalIn += stepInput;
+      totalOut += stepOutput;
+      stepIndex++;
+      const usageRow = await recordUsage(taskId, task.userId, stepIndex, {
+        kind: "model_call", model,
+        inputTokens: stepInput, outputTokens: stepOutput, cachedInputTokens: stepCachedInput,
+      });
+      consumedMicroUsd += usageRow.costMicroUsd;
+      const cpRow = await checkpointUsage(taskId, stepIndex);
+      lastCheckpointMicroUsd = cpRow.totalCostMicroUsd;
+      await db.update(agentTasksTable).set({ actionCount }).where(eq(agentTasksTable.id, taskId));
+      await appendEvent(taskId, projectId, "cost_update", {
+        inputTokens: totalIn, outputTokens: totalOut, costUsd: lastCheckpointMicroUsd / 1_000_000,
+        stepIndex, stepCostUsd: usageRow.costMicroUsd / 1_000_000, pricingVersion: usageRow.pricingVersion,
+      });
 
       const blocks = response.content as Array<{ type: string; text?: string; name?: string; input?: Record<string, unknown>; id?: string }>;
       const textParts = blocks.filter((b) => b.type === "text").map((b) => b.text ?? "").join("");
@@ -167,7 +318,20 @@ export async function runTask(taskId: string, opts: { approved?: boolean } = {})
               const plan = JSON.parse(planMatch[1]);
               await db.update(agentTasksTable).set({ plan }).where(eq(agentTasksTable.id, taskId));
               await appendEvent(taskId, projectId, "plan", plan);
-              await setState(taskId, projectId, "awaiting_approval");
+              // Settle the reservation against work consumed during planning
+              // so first-run usage is billed even if the user never approves
+              // the plan. Held reservation is released; on approval the
+              // resume will re-reserve for the next phase.
+              {
+                const reservationId = await findReservationId(taskId, task.userId);
+                const out = await settleReservation(task.userId, reservationId, consumedMicroUsd, taskId, "Plan paused for review");
+                await appendEvent(taskId, projectId, "cost_update", {
+                  ledgerDebitedUsd: consumedMicroUsd / 1_000_000,
+                  balanceUsd: out.balanceAfterMicroUsd / 1_000_000,
+                  pausedForReview: true,
+                });
+              }
+              await setState(taskId, projectId, "Review");
               if (cpTimer) clearInterval(cpTimer);
               return;
             } catch { /* fall through */ }
@@ -214,13 +378,40 @@ export async function runTask(taskId: string, opts: { approved?: boolean } = {})
       const finalCp = await createCheckpoint(taskId, projectId, "Saved progress at the end of the loop", true);
       await appendEvent(taskId, projectId, "checkpoint", { checkpointId: finalCp, label: "final", isFinal: true });
     }
-    await setState(taskId, projectId, "completed", {
+    {
+      // Settle the reservation down to actual usage; releases unused credits.
+      const reservationId = await findReservationId(taskId, task.userId);
+      const out = await settleReservation(task.userId, reservationId, consumedMicroUsd, taskId, "Task completed");
+      await appendEvent(taskId, projectId, "cost_update", {
+        ledgerDebitedUsd: consumedMicroUsd / 1_000_000, balanceUsd: out.balanceAfterMicroUsd / 1_000_000, final: true,
+      });
+    }
+    await db.insert(aiMessagesTable).values({
+      conversationId: task.conversationId!, role: "assistant", content: assistantTextOut || "(no response)",
+      toolCalls: { taskId } as object,
+    }).catch(() => {});
+    await setState(taskId, projectId, "Done", {
       completedAt: new Date(), result: assistantTextOut, actionCount,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Agent run failed";
     await appendEvent(taskId, projectId, "tool_error", { error: msg });
-    await setState(taskId, projectId, "failed", { completedAt: new Date(), errorMessage: msg });
+    {
+      // On failure: settle the reservation to the last successful checkpoint.
+      // Anything consumed past the checkpoint is auto-refunded by virtue of
+      // not being charged, and the unused reservation is released.
+      const charge = Math.min(consumedMicroUsd, lastCheckpointMicroUsd);
+      const reservationId = await findReservationId(taskId, task.userId);
+      const out = await settleReservation(task.userId, reservationId, charge, taskId, "Partial work consumed before failure");
+      const refundedMicroUsd = Math.max(0, consumedMicroUsd - charge);
+      await appendEvent(taskId, projectId, "cost_update", {
+        ledgerDebitedUsd: charge / 1_000_000,
+        refundedUsd: refundedMicroUsd / 1_000_000,
+        balanceUsd: out.balanceAfterMicroUsd / 1_000_000,
+        final: true,
+      });
+    }
+    await setState(taskId, projectId, "Failed", { completedAt: new Date(), errorMessage: msg });
   } finally {
     if (cpTimer) clearInterval(cpTimer);
     cancelled.delete(taskId);

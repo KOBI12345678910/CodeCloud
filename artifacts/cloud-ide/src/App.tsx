@@ -45,6 +45,7 @@ import ContainerHealth from "@/pages/ContainerHealth";
 import AdminRevenue from "@/pages/AdminRevenue";
 import TeamsPage from "@/pages/teams";
 import BillingDashboard from "@/pages/billing";
+import TasksPage from "@/pages/tasks";
 import DomainsPage from "@/pages/domains";
 import SecurityPage from "@/pages/security";
 import WebhooksPage from "@/pages/webhooks";
@@ -265,6 +266,9 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/billing">
               <ProtectedRoute component={BillingDashboard} />
+            </Route>
+            <Route path="/tasks">
+              <ProtectedRoute component={TasksPage} />
             </Route>
             <Route path="/domains">
               <ProtectedRoute component={DomainsPage} />

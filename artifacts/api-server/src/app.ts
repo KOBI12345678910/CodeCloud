@@ -3,6 +3,7 @@ import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
 import { CLERK_PROXY_PATH, clerkProxyMiddleware } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
+import stripeWebhookRouter from "./routes/stripe-webhook";
 import { logger } from "./lib/logger";
 import { corsMiddleware, helmetMiddleware, requestId, responseTime, noSniff } from "./middlewares/security";
 import { requestLogger } from "./middlewares/logging";
@@ -40,6 +41,12 @@ app.use(
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
 app.use(corsMiddleware);
+
+// Stripe webhook MUST be mounted BEFORE express.json() so the route can read
+// the raw body for stripe.webhooks.constructEvent signature verification.
+// The route uses express.raw({ type: "application/json" }) internally.
+app.use("/api", stripeWebhookRouter);
+
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(generalLimiter);

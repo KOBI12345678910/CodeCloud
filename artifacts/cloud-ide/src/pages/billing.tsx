@@ -1,42 +1,83 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "wouter";
-import { useUser } from "@clerk/react";
-import { useGetProfile } from "@workspace/api-client-react";
-import {
-  ArrowLeft, CreditCard, Download, ExternalLink, AlertTriangle,
-  Cpu, Brain, Globe, HardDrive, Zap, Server, FileText,
-} from "lucide-react";
+import { useSession } from "@clerk/react";
+import { ArrowLeft, CreditCard, Download, AlertTriangle, Plus, Settings, TrendingUp, Sparkles, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-interface BillingSummary {
-  plan: any;
-  interval: string;
-  status: string;
-  currentPeriod: { start: string; end: string };
-  baseCost: number;
-  meteredUsage: {
-    type: string; name: string; used: number; included: number;
-    overage: number; cost: number; unit: string;
-  }[];
-  totalEstimatedCost: number;
-  invoiceHistory: any[];
-  paymentMethod: any;
-  nextInvoiceDate: string | null;
+interface BalanceData {
+  balanceUsd: number; balanceMicroUsd: number; tier: string;
+  entitlements: { includedCreditsMicroUsd: number; maxConcurrentTasks: number; allowedModels: string[]; supportLevel: string };
+  autoTopup: { enabled: number; thresholdMicroUsd: number; topupAmountMicroUsd: number; lowBalanceWarnMicroUsd: number; stripePaymentMethodId: string | null } | null;
+  monthlyBurn: { month: string; debitedUsd: number; refundedUsd: number }[];
+  lowBalance: boolean;
 }
 
-export default function BillingDashboard() {
-  const { user } = useUser();
-  const { data: profile } = useGetProfile();
-  const [summary, setSummary] = useState<BillingSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+interface LedgerEntry { id: string; kind: string; amountUsd: number; description: string | null; createdAt: string; }
+interface InvoiceRow { id: string; number: string; status: string; totalUsd: number; issuedAt: string; pdfUrl: string; description: string | null; hostedUrl: string | null; }
 
-  useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL || ""}/api/billing/summary`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((data) => setSummary(data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+const KIND_LABELS: Record<string, string> = {
+  topup: "Top-up",
+  subscription_grant: "Subscription credits",
+  promo_grant: "Promo credits",
+  admin_grant: "Admin grant",
+  task_debit: "Task usage",
+  task_refund: "Auto-refund",
+  stripe_refund: "Stripe refund",
+  adjustment: "Adjustment",
+};
+
+const API = `${import.meta.env.VITE_API_URL || ""}/api`;
+
+export default function BillingDashboard() {
+  const { session } = useSession();
+  const [balance, setBalance] = useState<BalanceData | null>(null);
+  const [ledger, setLedger] = useState<LedgerEntry[]>([]);
+  const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
+  const [topupAmount, setTopupAmount] = useState("20");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const authedFetch = useCallback(async (path: string, init: RequestInit = {}) => {
+    const token = await session?.getToken();
+    const headers = new Headers(init.headers);
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+    if (!headers.has("Content-Type") && init.body) headers.set("Content-Type", "application/json");
+    const res = await fetch(`${API}${path}`, { ...init, headers });
+    if (!res.ok) throw new Error((await res.text()) || res.statusText);
+    return res.json();
+  }, [session]);
+
+  const refresh = useCallback(async () => {
+    try {
+      const [b, l, inv] = await Promise.all([
+        authedFetch("/credits/balance"),
+        authedFetch("/credits/ledger?limit=50"),
+        authedFetch("/billing/invoices"),
+      ]);
+      setBalance(b); setLedger(l.entries || []); setInvoices(inv);
+    } catch { /* */ } finally { setLoading(false); }
+  }, [authedFetch]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  const topup = useCallback(async () => {
+    setBusy("topup");
+    try {
+      const amt = Math.max(5, Number(topupAmount) || 20);
+      const out = await authedFetch("/credits/checkout", { method: "POST", body: JSON.stringify({ amountUsd: amt }) });
+      if (out.checkoutUrl) {
+        window.location.href = out.checkoutUrl;
+      } else {
+        await refresh();
+      }
+    } catch (e) { console.error(e); } finally { setBusy(null); }
+  }, [authedFetch, topupAmount, refresh]);
+
+  const saveAutoTopup = useCallback(async (patch: { enabled?: boolean; thresholdUsd?: number; topupAmountUsd?: number; lowBalanceWarnUsd?: number }) => {
+    setBusy("autotopup");
+    try { await authedFetch("/credits/auto-topup", { method: "PUT", body: JSON.stringify(patch) }); await refresh(); }
+    finally { setBusy(null); }
+  }, [authedFetch, refresh]);
 
   if (loading) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
@@ -44,169 +85,118 @@ export default function BillingDashboard() {
     </div>
   );
 
-  const METER_ICONS: Record<string, any> = {
-    compute: Cpu, ai_tokens: Brain, bandwidth: Globe,
-    storage_overage: HardDrive, always_on: Server, gpu_compute: Zap,
-  };
-
-  const UsageBar = ({ used, included }: { used: number; included: number; overage: number }) => {
-    const pct = included === Infinity ? 0 : Math.min((used / (included || 1)) * 100, 150);
-    const color = pct > 100 ? "bg-destructive" : pct > 80 ? "bg-yellow-500" : "bg-primary";
-    return (
-      <div className="w-full h-2 bg-muted rounded-full overflow-visible relative">
-        <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${Math.min(pct, 100)}%` }} />
-        {included !== Infinity && (
-          <div className="absolute top-0 bottom-0 w-px bg-muted-foreground" style={{ left: `${Math.min(100, (included / Math.max(used, included)) * 100)}%` }} />
-        )}
-      </div>
-    );
-  };
+  const burn = balance?.monthlyBurn ?? [];
+  const maxBurn = Math.max(0.01, ...burn.map((b) => b.debitedUsd));
 
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center gap-4 px-6 py-3 bg-card border-b border-border">
-        <Link href="/settings"><ArrowLeft className="w-5 h-5 text-muted-foreground hover:text-foreground cursor-pointer" /></Link>
+        <Link href="/dashboard"><ArrowLeft className="w-5 h-5 text-muted-foreground hover:text-foreground cursor-pointer" /></Link>
         <CreditCard className="w-5 h-5 text-primary" />
-        <h1 className="text-lg font-bold">Billing & Usage</h1>
+        <h1 className="text-lg font-bold">Billing & Credits</h1>
+        <Link href="/tasks" className="ml-auto text-xs text-primary hover:underline flex items-center gap-1"><Activity className="w-3.5 h-3.5" /> Tasks</Link>
       </header>
 
-      <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
-        <div className="bg-card border border-border rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-xl font-bold">{summary?.plan?.name || "Free"} Plan</h2>
-              <p className="text-sm text-muted-foreground">
-                {summary?.status === "active" ? "Active" : summary?.status}
-                {summary?.currentPeriod.end && ` · Renews ${new Date(summary.currentPeriod.end).toLocaleDateString()}`}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold">
-                ${summary?.totalEstimatedCost.toFixed(2) || "0.00"}
-                <span className="text-sm text-muted-foreground font-normal">/mo</span>
-              </p>
-              <p className="text-xs text-muted-foreground">estimated this month</p>
+      <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
+        {balance?.lowBalance && (
+          <div className="rounded-2xl border border-yellow-500/40 bg-yellow-500/10 p-4 flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+            <span className="text-sm flex-1">Your credit balance is low. Top up to keep tasks running.</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="md:col-span-2 bg-card border border-border rounded-2xl p-6">
+            <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Credit balance</div>
+            <div className="text-4xl font-bold">${(balance?.balanceUsd ?? 0).toFixed(2)}</div>
+            <div className="text-xs text-muted-foreground mt-1">Tier: <span className="font-medium uppercase">{balance?.tier}</span> · {balance?.entitlements.maxConcurrentTasks} concurrent tasks · models: {balance?.entitlements.allowedModels.join(", ")}</div>
+            <div className="mt-4 flex items-center gap-2">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                <input value={topupAmount} onChange={(e) => setTopupAmount(e.target.value)} className="bg-background border border-border rounded pl-6 pr-3 py-1.5 text-sm w-28" />
+              </div>
+              <Button size="sm" onClick={() => void topup()} disabled={busy === "topup"}><Plus className="w-3.5 h-3.5 mr-1" /> Top up</Button>
+              <Link href="/pricing"><Button size="sm" variant="outline"><Sparkles className="w-3.5 h-3.5 mr-1" /> Change plan</Button></Link>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Link href="/pricing">
-              <Button size="sm">
-                {(profile?.plan || "free") === "free" ? "Upgrade" : "Change Plan"}
-              </Button>
-            </Link>
+          <div className="bg-card border border-border rounded-2xl p-6">
+            <div className="text-xs text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-1"><Settings className="w-3 h-3" /> Auto top-up</div>
+            <label className="flex items-center justify-between text-sm mb-2">
+              <span>Enabled</span>
+              <input type="checkbox" checked={!!balance?.autoTopup?.enabled} onChange={(e) => void saveAutoTopup({ enabled: e.target.checked })} />
+            </label>
+            <label className="block text-xs mb-1">Floor (refill below)</label>
+            <input type="number" defaultValue={(Number(balance?.autoTopup?.thresholdMicroUsd ?? 2_000_000) / 1_000_000).toFixed(2)}
+              onBlur={(e) => void saveAutoTopup({ thresholdUsd: Number(e.target.value) })}
+              className="w-full bg-background border border-border rounded px-2 py-1 text-sm mb-2" />
+            <label className="block text-xs mb-1">Refill amount</label>
+            <input type="number" defaultValue={(Number(balance?.autoTopup?.topupAmountMicroUsd ?? 20_000_000) / 1_000_000).toFixed(2)}
+              onBlur={(e) => void saveAutoTopup({ topupAmountUsd: Number(e.target.value) })}
+              className="w-full bg-background border border-border rounded px-2 py-1 text-sm mb-2" />
+            <label className="block text-xs mb-1">Low-balance warning at</label>
+            <input type="number" defaultValue={(Number(balance?.autoTopup?.lowBalanceWarnMicroUsd ?? 5_000_000) / 1_000_000).toFixed(2)}
+              onBlur={(e) => void saveAutoTopup({ lowBalanceWarnUsd: Number(e.target.value) })}
+              className="w-full bg-background border border-border rounded px-2 py-1 text-sm" />
           </div>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6">
-          <h2 className="text-lg font-bold mb-4">Current Period Cost Breakdown</h2>
-
-          <div className="space-y-1 mb-4">
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-muted-foreground">Base subscription ({summary?.plan?.name})</span>
-              <span className="text-sm font-medium">${summary?.baseCost.toFixed(2)}</span>
+          <div className="text-xs text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Monthly burn</div>
+          {burn.length === 0 ? (
+            <div className="text-sm text-muted-foreground py-6 text-center">No usage yet</div>
+          ) : (
+            <div className="grid grid-cols-6 gap-2 items-end h-32">
+              {burn.map((b) => (
+                <div key={b.month} className="flex flex-col items-center gap-1">
+                  <div className="text-[10px] font-mono text-muted-foreground">${b.debitedUsd.toFixed(2)}</div>
+                  <div className="w-full bg-muted rounded-t relative" style={{ height: `${Math.max(2, (b.debitedUsd / maxBurn) * 100)}%` }}>
+                    <div className="absolute inset-0 bg-primary/70 rounded-t" />
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">{b.month.slice(5)}</div>
+                </div>
+              ))}
             </div>
-
-            {summary?.meteredUsage.filter((m) => m.cost > 0).map((meter) => (
-              <div key={meter.type} className="flex items-center justify-between py-2 border-t border-border/30">
-                <span className="text-sm text-muted-foreground">{meter.name} overage ({meter.overage.toFixed(1)} {meter.unit})</span>
-                <span className="text-sm font-medium text-yellow-500">${meter.cost.toFixed(2)}</span>
-              </div>
-            ))}
-
-            <div className="flex items-center justify-between py-3 border-t-2 border-border">
-              <span className="text-sm font-bold">Estimated Total</span>
-              <span className="text-lg font-bold">${summary?.totalEstimatedCost.toFixed(2)}</span>
-            </div>
-          </div>
-
-          {summary?.nextInvoiceDate && (
-            <p className="text-xs text-muted-foreground">Next invoice: {new Date(summary.nextInvoiceDate).toLocaleDateString()}</p>
           )}
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6">
-          <h2 className="text-lg font-bold mb-4">Usage This Month</h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {summary?.meteredUsage.map((meter) => {
-              const Icon = METER_ICONS[meter.type] || Cpu;
-              const isOverLimit = meter.used > meter.included && meter.included !== Infinity;
-              return (
-                <div key={meter.type} className={`rounded-xl p-4 ${isOverLimit ? "bg-yellow-500/5 border border-yellow-500/20" : "bg-muted/50"}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Icon className={`w-4 h-4 ${isOverLimit ? "text-yellow-500" : "text-muted-foreground"}`} />
-                      <span className="text-xs font-medium">{meter.name}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-xs font-mono">{meter.used.toFixed(1)}</span>
-                      <span className="text-xs text-muted-foreground"> / {meter.included === Infinity ? "\u221e" : meter.included} {meter.unit}</span>
-                    </div>
+          <h2 className="text-sm font-semibold mb-3">Recent ledger activity</h2>
+          {ledger.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No ledger entries yet.</p>
+          ) : (
+            <div className="space-y-1">
+              {ledger.map((e) => (
+                <div key={e.id} className="flex items-center justify-between py-2 border-b border-border/20 last:border-0 text-sm">
+                  <div>
+                    <div className="font-medium">{KIND_LABELS[e.kind] ?? e.kind}</div>
+                    <div className="text-xs text-muted-foreground">{e.description ?? ""} · {new Date(e.createdAt).toLocaleString()}</div>
                   </div>
-                  <UsageBar used={meter.used} included={meter.included} overage={meter.overage} />
-                  {isOverLimit && (
-                    <div className="flex items-center gap-1 mt-1.5 text-[10px] text-yellow-500">
-                      <AlertTriangle className="w-3 h-3" />
-                      Overage: {meter.overage.toFixed(1)} {meter.unit} (+${meter.cost.toFixed(2)})
-                    </div>
-                  )}
+                  <div className={`font-mono ${e.amountUsd >= 0 ? "text-green-500" : "text-foreground"}`}>{e.amountUsd >= 0 ? "+" : ""}${e.amountUsd.toFixed(4)}</div>
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {summary?.paymentMethod && (
-          <div className="bg-card border border-border rounded-2xl p-6">
-            <h2 className="text-lg font-bold mb-4">Payment Method</h2>
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-9 bg-muted rounded-lg flex items-center justify-center">
-                <CreditCard className="w-6 h-6 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="text-sm capitalize">{summary.paymentMethod.brand} **** {summary.paymentMethod.last4}</p>
-                <p className="text-xs text-muted-foreground">Expires {summary.paymentMethod.expMonth}/{summary.paymentMethod.expYear}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
         <div className="bg-card border border-border rounded-2xl p-6">
-          <h2 className="text-lg font-bold mb-4">Invoice History</h2>
-
-          {(!summary?.invoiceHistory || summary.invoiceHistory.length === 0) ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No invoices yet</p>
+          <h2 className="text-sm font-semibold mb-3">Invoices</h2>
+          {invoices.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No invoices yet.</p>
           ) : (
             <div className="space-y-2">
-              {summary.invoiceHistory.map((inv: any) => (
-                <div key={inv.id} className="flex items-center justify-between py-3 border-b border-border/30 last:border-0">
-                  <div className="flex items-center gap-3">
-                    <FileText className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm">{inv.number || "Invoice"}</p>
-                      <p className="text-xs text-muted-foreground">{inv.date ? new Date(inv.date).toLocaleDateString() : ""}</p>
-                    </div>
+              {invoices.map((inv) => (
+                <div key={inv.id} className="flex items-center justify-between py-2 border-b border-border/20 last:border-0">
+                  <div>
+                    <div className="text-sm font-medium">{inv.number}</div>
+                    <div className="text-xs text-muted-foreground">{inv.description ?? "Invoice"} · {new Date(inv.issuedAt).toLocaleDateString()}</div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className={`text-sm font-medium ${inv.status === "paid" ? "text-green-500" : inv.status === "open" ? "text-yellow-500" : "text-muted-foreground"}`}>
-                      ${inv.amount.toFixed(2)}
-                    </span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                      inv.status === "paid" ? "bg-green-500/10 text-green-500" : inv.status === "open" ? "bg-yellow-500/10 text-yellow-500" : "bg-muted text-muted-foreground"
-                    }`}>
-                      {inv.status}
-                    </span>
-                    {inv.pdfUrl && (
-                      <a href={inv.pdfUrl} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-muted rounded transition">
-                        <Download className="w-3.5 h-3.5 text-muted-foreground" />
-                      </a>
-                    )}
-                    {inv.hostedUrl && (
-                      <a href={inv.hostedUrl} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-muted rounded transition">
-                        <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
-                      </a>
-                    )}
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${inv.status === "paid" ? "bg-green-500/15 text-green-500" : "bg-muted text-muted-foreground"}`}>{inv.status}</span>
+                    <span className="font-mono text-sm">${inv.totalUsd.toFixed(2)}</span>
+                    <a href={`${API}${inv.pdfUrl.replace(/^\/api/, "")}`} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-muted rounded">
+                      <Download className="w-4 h-4 text-muted-foreground" />
+                    </a>
                   </div>
                 </div>
               ))}

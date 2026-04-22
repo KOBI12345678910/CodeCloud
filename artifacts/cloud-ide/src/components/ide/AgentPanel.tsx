@@ -129,6 +129,8 @@ export default function AgentPanel({
   const [diffOpen, setDiffOpen] = useState<string | null>(null);
   const [diffData, setDiffData] = useState<{ path: string; status: string }[]>([]);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [billingError, setBillingError] = useState<{ code?: string; message: string; balanceUsd?: number } | null>(null);
+  const [balance, setBalance] = useState<{ balanceUsd: number; lowBalance: boolean } | null>(null);
 
   const listRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -143,6 +145,15 @@ export default function AgentPanel({
     if (!res.ok) throw new Error((await res.text()) || res.statusText);
     return res.json();
   }, [session, apiBase]);
+
+  const refreshBalance = useCallback(async () => {
+    try {
+      const data = await authedFetch(`/credits/balance`);
+      setBalance({ balanceUsd: data.balanceUsd, lowBalance: !!data.lowBalance });
+    } catch { /* noop */ }
+  }, [authedFetch]);
+
+  useEffect(() => { void refreshBalance(); }, [refreshBalance]);
 
   const refreshTasks = useCallback(async () => {
     try {
@@ -229,15 +240,33 @@ export default function AgentPanel({
 
     setInput("");
     try {
-      const created = await authedFetch("/agent/tasks", {
-        method: "POST",
+      const token = await session?.getToken();
+      const headers = new Headers({ "Content-Type": "application/json" });
+      if (token) headers.set("Authorization", `Bearer ${token}`);
+      const res = await fetch(`${apiBase}/agent/tasks`, {
+        method: "POST", headers,
         body: JSON.stringify({
           projectId, prompt, mode, tier,
           conversationId: activeTask?.conversationId ?? null,
         }),
       });
+      if (res.status === 402) {
+        const data = await res.json().catch(() => ({}));
+        setBillingError({ code: "no_credits", message: data?.error || "Out of credits", balanceUsd: data?.balanceUsd });
+        setInput(trimmed);
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setBillingError({ code: data?.code, message: data?.error || res.statusText });
+        setInput(trimmed);
+        return;
+      }
+      const created = await res.json();
+      setBillingError(null);
       await refreshTasks();
       await loadTask(created.taskId);
+      void refreshBalance();
     } catch (e) {
       console.error("agent: failed to create task", e);
     }
@@ -506,6 +535,24 @@ export default function AgentPanel({
             <Crosshair className="w-3 h-3" /> Errors
           </button>
         </div>
+        {(billingError?.code === "no_credits" || balance?.lowBalance) && (
+          <div className={`mb-2 flex items-center gap-2 rounded border px-2 py-1.5 text-[11px] ${billingError?.code === "no_credits" ? "border-destructive/50 bg-destructive/10 text-destructive" : "border-yellow-500/40 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400"}`}>
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            <span className="flex-1">
+              {billingError?.code === "no_credits"
+                ? `${billingError.message}${typeof billingError.balanceUsd === "number" ? ` (Balance: $${billingError.balanceUsd.toFixed(2)})` : ""}`
+                : `Low credit balance: $${balance?.balanceUsd.toFixed(2)}`}
+            </span>
+            <a href="/billing" className="font-semibold underline">Top up</a>
+          </div>
+        )}
+        {billingError && billingError.code !== "no_credits" && (
+          <div className="mb-2 flex items-center gap-2 rounded border border-destructive/40 bg-destructive/10 px-2 py-1.5 text-[11px] text-destructive">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            <span className="flex-1">{billingError.message}</span>
+            <button onClick={() => setBillingError(null)} className="opacity-60 hover:opacity-100">×</button>
+          </div>
+        )}
         <div className="flex gap-1.5">
           <textarea
             className="flex-1 bg-background border border-border rounded px-2 py-1.5 text-xs resize-none min-h-[44px] max-h-32"

@@ -1,0 +1,133 @@
+import { useEffect, useState } from "react";
+import { Link } from "wouter";
+import { Code2, Menu } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+
+const MARKETING_LINKS = [
+  { label: "Product", href: "/product" },
+  { label: "Solutions", href: "/solutions" },
+  { label: "Pricing", href: "/pricing" },
+  { label: "Blog", href: "/blog" },
+  { label: "Careers", href: "/careers" },
+  { label: "Docs", href: "/docs" },
+];
+
+export default function MarketingHeader() {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <header
+      className={`sticky top-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? "bg-background/70 backdrop-blur-xl border-b border-border/60 shadow-[0_1px_0_0_rgba(255,255,255,0.04)]"
+          : "bg-transparent border-b border-transparent"
+      }`}
+      data-testid="marketing-header"
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+        <Link href="/">
+          <div className="flex items-center gap-2 cursor-pointer shrink-0" data-testid="marketing-logo">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center shadow-lg shadow-primary/30">
+              <Code2 className="w-4 h-4 text-primary-foreground" />
+            </div>
+            <span className="text-lg font-bold tracking-tight">CodeCloud</span>
+          </div>
+        </Link>
+
+        <nav
+          className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2"
+          data-testid="marketing-nav"
+        >
+          {MARKETING_LINKS.map((link) => (
+            <Link key={link.href} href={link.href}>
+              <button
+                className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-md"
+                data-testid={`nav-${link.label.toLowerCase()}`}
+              >
+                {link.label}
+              </button>
+            </Link>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-2">
+          <Link href="/sign-in">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden sm:inline-flex text-foreground/80 hover:text-foreground hover:bg-white/5"
+              data-testid="marketing-login"
+            >
+              Log in
+            </Button>
+          </Link>
+          <Link href="/sign-up">
+            <Button
+              size="sm"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium shadow-lg shadow-primary/20"
+              data-testid="marketing-cta"
+            >
+              Start building
+            </Button>
+          </Link>
+
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden h-9 w-9"
+                data-testid="marketing-hamburger"
+              >
+                <Menu className="w-5 h-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-72 p-0 bg-background border-border/60">
+              <div className="flex items-center gap-2 px-5 h-16 border-b border-border/60">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center">
+                  <Code2 className="w-4 h-4 text-primary-foreground" />
+                </div>
+                <span className="text-lg font-bold tracking-tight">CodeCloud</span>
+              </div>
+              <nav className="p-4 space-y-1">
+                {MARKETING_LINKS.map((link) => (
+                  <SheetClose key={link.href} asChild>
+                    <Link href={link.href}>
+                      <button className="w-full text-left px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors">
+                        {link.label}
+                      </button>
+                    </Link>
+                  </SheetClose>
+                ))}
+                <div className="pt-4 mt-4 border-t border-border/60 space-y-2">
+                  <SheetClose asChild>
+                    <Link href="/sign-in">
+                      <Button variant="ghost" className="w-full justify-start">
+                        Log in
+                      </Button>
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link href="/sign-up">
+                      <Button className="w-full bg-primary hover:bg-primary/90">
+                        Start building
+                      </Button>
+                    </Link>
+                  </SheetClose>
+                </div>
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </div>
+    </header>
+  );
+}

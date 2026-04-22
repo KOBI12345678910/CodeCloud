@@ -18,6 +18,11 @@ import ForgotPasswordPage from "@/pages/forgot-password";
 import ResetPasswordPage from "@/pages/reset-password";
 import PricingPage from "@/pages/pricing";
 import ChangelogPage from "@/pages/changelog";
+import ProductPage from "@/pages/product";
+import SolutionsPage from "@/pages/solutions";
+import BlogPage from "@/pages/blog";
+import CareersPage from "@/pages/careers";
+import DocsPage from "@/pages/docs";
 import StatusPage from "@/pages/status";
 import ApiDocsPage from "@/pages/api-docs";
 import IntegrationsPage from "@/pages/integrations";
@@ -177,6 +182,11 @@ function ClerkProviderWithRoutes() {
               <ProtectedRoute component={AdminPage} />
             </Route>
             <Route path="/changelog" component={ChangelogPage} />
+            <Route path="/product" component={ProductPage} />
+            <Route path="/solutions" component={SolutionsPage} />
+            <Route path="/blog" component={BlogPage} />
+            <Route path="/careers" component={CareersPage} />
+            <Route path="/docs" component={DocsPage} />
             <Route path="/status" component={StatusPage} />
             <Route path="/api-docs" component={ApiDocsPage} />
             <Route path="/integrations">

@@ -13,7 +13,7 @@ I prefer concise and direct communication. When making changes, prioritize funct
 The project is structured as a pnpm monorepo using TypeScript, with distinct artifacts for the API server, client-side IDE, and shared libraries.
 
 **UI/UX Decisions:**
-The frontend uses React 19, Vite, and Tailwind CSS v4, providing a responsive and modern interface. The IDE includes a Monaco editor, resizable panels, a customizable dark theme, multi-file search, resource monitoring, a fully-featured terminal (xterm.js), collaborative cursors, file breadcrumbs, split-editor view, image and Markdown previews, and integrated Git and environment variable editors. Layout persistence is managed per project using local storage.
+The frontend uses React 19, Vite, and Tailwind CSS v4, providing a responsive and modern interface. Visual parity with Replit/Lovable (2026): prompt-first landing page ("What will you build?"), 7 category icons (Website/Mobile/Design/Slides/Animation/Backend/AI Agent), example prompts, client logos, animated stats, 4-tier pricing (Starter/Core/Pro/Enterprise) with Monthly/Yearly toggle. All 10 feature pages use FeaturePageLayout with MarketingHeader/Footer + radial gradient hero. The IDE includes a Monaco editor, resizable panels, a customizable dark theme, multi-file search, resource monitoring, a fully-featured terminal (xterm.js), collaborative cursors, file breadcrumbs, split-editor view, image and Markdown previews, and integrated Git and environment variable editors. Layout persistence is managed per project using local storage.
 
 **Technical Implementations:**
 - **API Server:** An Express 5 REST API manages all backend operations (322 route files).

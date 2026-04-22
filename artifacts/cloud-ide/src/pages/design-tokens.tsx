@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import FeaturePageLayout from "@/components/FeaturePageLayout";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const api = (p: string) => `${basePath}/api${p}`;
@@ -37,13 +38,9 @@ export default function DesignTokensPage() {
   ] as const;
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Design System</h1>
-            <p className="text-muted-foreground mt-1">Tokens, typography, components — your visual language</p>
-          </div>
+    <FeaturePageLayout title="Design System" subtitle="Tokens, typography, components — your visual language" badge="Design" testId="design-tokens-page">
+      <div className="space-y-8">
+        <div className="flex items-center justify-end gap-3">
           {!initialized && <button onClick={init} className="bg-primary text-primary-foreground rounded px-4 py-2 text-sm">Initialize Design System</button>}
           {initialized && system && <span className="text-xs bg-green-500/20 text-green-400 px-3 py-1 rounded">v{system.version}</span>}
         </div>
@@ -158,6 +155,6 @@ export default function DesignTokensPage() {
           </div>
         )}
       </div>
-    </div>
+    </FeaturePageLayout>
   );
 }

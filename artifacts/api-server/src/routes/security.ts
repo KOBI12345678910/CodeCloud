@@ -4,10 +4,10 @@ import type { AuthenticatedRequest } from "../types";
 import {
   setupTwoFactor,
   getTwoFactorStatus,
-  enableTwoFactor,
+  verifyAndEnableTwoFactor,
   disableTwoFactor,
   validateTwoFactorCode,
-  generateBackupCodes,
+  regenerateBackupCodes,
 } from "../services/two-factor";
 import { listUserSessions, revokeSession, revokeAllSessions } from "../services/session-manager";
 import { getLoginHistory } from "../services/login-history";
@@ -65,7 +65,7 @@ router.post("/security/2fa/verify", requireJwtAuth, async (req, res): Promise<vo
     return;
   }
 
-  await enableTwoFactor(userId);
+  await verifyAndEnableTwoFactor(userId, token);
 
   logAudit({
     userId,
@@ -137,7 +137,7 @@ router.post("/security/2fa/regenerate-backup", requireJwtAuth, async (req, res):
     return;
   }
 
-  const newCodes = await generateBackupCodes(userId);
+  const newCodes = await regenerateBackupCodes(userId);
 
   logAudit({
     userId,

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import FeaturePageLayout from "@/components/FeaturePageLayout";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const api = (p: string) => `${basePath}/api${p}`;
@@ -30,17 +31,17 @@ export default function PublishingControlsPage() {
     if (r.ok) load();
   };
 
-  if (!config) return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Loading...</div>;
+  if (!config) return (
+    <FeaturePageLayout title="Publishing Controls" subtitle="Configure deployment pipelines, approvals, and rollback policies" badge="DevOps" testId="publishing-controls-page">
+      <div className="flex items-center justify-center py-20 text-muted-foreground">Loading...</div>
+    </FeaturePageLayout>
+  );
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-8">
-      <div className="max-w-5xl mx-auto space-y-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Publishing Controls</h1>
-            <p className="text-muted-foreground mt-1">Configure deployment pipelines, approvals, and rollback policies</p>
-          </div>
-          <button onClick={publish} className="bg-green-600 text-white rounded px-4 py-2 text-sm font-medium hover:bg-green-700">Publish Now</button>
+    <FeaturePageLayout title="Publishing Controls" subtitle="Configure deployment pipelines, approvals, and rollback policies" badge="DevOps" testId="publishing-controls-page">
+      <div className="space-y-8">
+        <div className="flex justify-end">
+          <button onClick={publish} className="bg-green-600 text-white rounded-lg px-5 py-2.5 text-sm font-medium hover:bg-green-700 transition-colors shadow-lg shadow-green-600/20">Publish Now</button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -132,6 +133,6 @@ export default function PublishingControlsPage() {
           </div>
         )}
       </div>
-    </div>
+    </FeaturePageLayout>
   );
 }

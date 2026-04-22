@@ -1,6 +1,4 @@
 import { Router, type IRouter } from "express";
-import { authLimiter, aiLimiter, uploadLimiter, deployLimiter, billingLimiter } from "../middlewares/rateLimit";
-import { requireApiKeyScope } from "../middlewares/apiKeyScope";
 import healthRouter from "./health";
 import profileRouter from "./profile";
 import projectsRouter from "./projects";
@@ -324,7 +322,7 @@ import knowledgeBaseRouter from "./knowledge-base";
 import securityCenterRouter from "./security-center";
 import orgPoliciesRouter from "./org-policies";
 import { authLimiter, aiLimiter, uploadLimiter, deployLimiter, billingLimiter } from "../middlewares/rateLimit";
-import requireApiKeyScope from "../middlewares/apiKeyScope";
+import { requireApiKeyScope } from "../middlewares/apiKeyScope";
 
 const router: IRouter = Router();
 

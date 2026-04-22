@@ -1,4 +1,5 @@
 import { useState } from "react";
+import FeaturePageLayout from "@/components/FeaturePageLayout";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const api = (p: string) => `${basePath}/api${p}`;
@@ -54,12 +55,8 @@ export default function RbacPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Access Control (RBAC)</h1>
-          <p className="text-muted-foreground mt-1">Manage roles, permissions, and access policies for your organization</p>
-        </div>
+    <FeaturePageLayout title="Access Control (RBAC)" subtitle="Manage roles, permissions, and access policies for your organization" badge="Security" testId="rbac-page">
+      <div className="space-y-8">
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[
@@ -175,6 +172,6 @@ export default function RbacPage() {
           </div>
         )}
       </div>
-    </div>
+    </FeaturePageLayout>
   );
 }

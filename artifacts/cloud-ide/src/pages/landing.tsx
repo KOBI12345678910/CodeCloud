@@ -3,7 +3,8 @@ import { Link } from "wouter";
 import {
   Code2, Zap, Globe, Users, Terminal, Rocket,
   Check, Star, ArrowRight, Shield, Cpu, GitBranch,
-  Sparkles, ChevronRight,
+  Sparkles, ChevronRight, Monitor, Smartphone, Palette,
+  Presentation, Play, Send, Plus, Database, Bot, Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import MarketingHeader from "@/components/MarketingHeader";
@@ -153,6 +154,23 @@ function StatsCounter({ value, suffix, label, active }: { value: number; suffix:
   );
 }
 
+const CATEGORIES = [
+  { icon: Monitor, label: "Website" },
+  { icon: Smartphone, label: "Mobile" },
+  { icon: Palette, label: "Design" },
+  { icon: Presentation, label: "Slides" },
+  { icon: Play, label: "Animation" },
+  { icon: Database, label: "Backend" },
+  { icon: Bot, label: "AI Agent" },
+];
+
+const EXAMPLE_PROMPTS = [
+  "SaaS landing page with auth",
+  "Task management dashboard",
+  "E-commerce storefront",
+  "Real-time chat application",
+];
+
 const logos = ["Acme", "Globex", "Initech", "Umbrella", "Stark", "Wayne", "Hooli", "Pied Piper"];
 
 const testimonials = [
@@ -178,30 +196,43 @@ const features = [
 
 const plans = [
   {
-    name: "Free",
+    name: "Starter",
     price: "$0",
+    priceAnnual: "$0",
     period: "forever",
-    desc: "Perfect for learning and personal projects",
-    features: ["3 projects", "1 GB storage", "Shared compute", "Community support", "Public projects", "Basic templates"],
-    cta: "Get started free",
+    desc: "For exploring what's possible",
+    features: ["Free daily Agent credits", "Free AI integrations", "Publish 1 app", "Community support", "Public projects", "Basic templates"],
+    cta: "Sign up",
+    highlight: false,
+  },
+  {
+    name: "Core",
+    price: "$20",
+    priceAnnual: "$18",
+    period: "/month",
+    desc: "For personal projects & simple apps",
+    features: ["$20 of monthly credits", "Up to 5 collaborators", "Unlimited workspaces", "Autonomous long builds", "Remove \"Made with CodeCloud\" badge", "All templates", "Custom domains"],
+    cta: "Join Core",
     highlight: false,
   },
   {
     name: "Pro",
-    price: "$12",
+    price: "$100",
+    priceAnnual: "$90",
     period: "/month",
-    desc: "For professionals building production apps",
-    features: ["Unlimited projects", "20 GB storage", "Dedicated 4 vCPU / 8 GB RAM", "Priority support", "Private projects", "All templates", "Custom domains", "Team collaboration (5 members)", "API access"],
-    cta: "Start Pro trial",
+    desc: "For commercial & professional apps",
+    features: ["Everything in Core", "$100 monthly credits", "Up to 15 collaborators", "Up to 50 viewers", "Most powerful AI models", "Private deployments", "Database restore up to 28 days", "Premium support"],
+    cta: "Join Pro",
     highlight: true,
   },
   {
-    name: "Team",
+    name: "Enterprise",
     price: "Custom",
+    priceAnnual: "Custom",
     period: "",
-    desc: "For organizations that need scale and control",
-    features: ["Everything in Pro", "Unlimited storage", "8 vCPU / 16 GB RAM", "SSO / SAML", "Audit logs", "SLA guarantee", "Dedicated support engineer", "On-premise option", "Custom integrations", "Unlimited team members"],
-    cta: "Contact sales",
+    desc: "Enterprise-grade security & controls",
+    features: ["Everything in Pro", "Custom seat limits", "SSO / SAML", "Advanced privacy controls", "Design system support", "Data warehouse connections", "Dedicated support", "Single-tenant environments", "Region selection", "VPC peering"],
+    cta: "Contact us",
     highlight: false,
   },
 ];
@@ -231,6 +262,8 @@ export default function LandingPage() {
   const { t } = useTranslation();
   const statsRef = useRef<HTMLDivElement>(null);
   const [statsVisible, setStatsVisible] = useState(shouldSkipAnimations());
+  const [promptValue, setPromptValue] = useState("");
+  const [billingAnnual, setBillingAnnual] = useState(true);
 
   useEffect(() => {
     if (statsVisible) return;
@@ -267,13 +300,11 @@ export default function LandingPage() {
       <MarketingHeader />
 
       <main>
-        {/* Hero */}
-        <section className="relative px-6 pt-20 pb-24 md:pt-28 md:pb-32 overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_-10%,hsl(224_76%_48%/0.18),transparent_60%)] pointer-events-none" />
-          <div className="absolute top-32 -left-40 w-[500px] h-[500px] bg-primary/15 rounded-full blur-3xl animate-pulse [animation-duration:8s] pointer-events-none" />
-          <div className="absolute bottom-0 -right-40 w-[450px] h-[450px] bg-blue-500/10 rounded-full blur-3xl animate-pulse [animation-duration:10s] [animation-delay:2s] pointer-events-none" />
+        {/* Hero — Prompt-first like Replit/Lovable */}
+        <section className="relative px-6 pt-24 pb-16 md:pt-36 md:pb-24 overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_-10%,hsl(224_76%_48%/0.12),transparent_60%)] pointer-events-none" />
           <div
-            className="absolute inset-0 opacity-[0.04] pointer-events-none"
+            className="absolute inset-0 opacity-[0.03] pointer-events-none"
             style={{
               backgroundImage:
                 "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
@@ -282,44 +313,78 @@ export default function LandingPage() {
             }}
           />
 
-          <div className="max-w-5xl mx-auto text-center relative">
+          <div className="max-w-3xl mx-auto text-center relative">
             <Reveal immediate>
-              <Link href="/blog">
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-xs sm:text-sm text-primary mb-8 hover:bg-primary/10 transition-colors cursor-pointer">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>{t("landing.hero.eyebrow")}</span>
-                  <ChevronRight className="w-3 h-3" />
-                </div>
-              </Link>
-            </Reveal>
-
-            <Reveal delay={80} immediate>
-              <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05]">
-                {t("landing.hero.title")}
+              <h1 className="text-4xl sm:text-5xl md:text-[3.75rem] font-bold tracking-tight leading-[1.1]">
+                What will you build?
               </h1>
             </Reveal>
 
-            <Reveal delay={160} immediate>
-              <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                {t("landing.hero.subtitle", { count: LANGUAGES.length })}
+            <Reveal delay={80} immediate>
+              <p className="mt-4 text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
+                Turn ideas into apps in minutes — no coding needed
               </p>
             </Reveal>
 
+            <Reveal delay={160} immediate>
+              <div className="mt-10 w-full max-w-2xl mx-auto">
+                <div className="relative rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-2xl shadow-primary/10 transition-all focus-within:border-primary/50 focus-within:shadow-primary/20">
+                  <textarea
+                    value={promptValue}
+                    onChange={(e) => setPromptValue(e.target.value)}
+                    placeholder="Describe your idea, CodeCloud will bring it to life..."
+                    rows={2}
+                    className="w-full resize-none bg-transparent px-5 pt-5 pb-2 text-base text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
+                    data-testid="hero-prompt"
+                  />
+                  <div className="flex items-center justify-between px-4 pb-3">
+                    <button className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground">
+                      <Plus className="w-5 h-5" />
+                    </button>
+                    <Link href="/sign-up">
+                      <button
+                        className="w-9 h-9 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center transition-all shadow-lg shadow-primary/30"
+                        data-testid="hero-submit"
+                      >
+                        <ArrowRight className="w-4 h-4 text-primary-foreground" />
+                      </button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </Reveal>
+
             <Reveal delay={240} immediate>
-              <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
-                <Link href="/sign-up">
-                  <Button size="lg" className="px-8 h-12 text-base shadow-lg shadow-primary/20" data-testid="button-get-started">
-                    {t("landing.hero.ctaPrimary")} <ArrowRight className="w-4 h-4 ml-2 rtl:rotate-180" />
-                  </Button>
-                </Link>
-                <Button size="lg" variant="outline" className="px-8 h-12 text-base bg-white/5 border-border/60 hover:bg-white/10" onClick={scrollToFeatures} data-testid="button-explore">
-                  {t("landing.hero.ctaSecondary")}
-                </Button>
+              <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
+                {CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.label}
+                    className="flex flex-col items-center gap-1.5 px-4 py-3 rounded-xl hover:bg-white/5 transition-colors group"
+                  >
+                    <div className="w-10 h-10 rounded-xl border border-border/40 bg-card/60 flex items-center justify-center group-hover:border-primary/40 group-hover:bg-primary/5 transition-all">
+                      <cat.icon className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </div>
+                    <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">{cat.label}</span>
+                  </button>
+                ))}
               </div>
             </Reveal>
 
             <Reveal delay={320} immediate>
-              <AnimatedCodeEditor />
+              <div className="mt-5 flex items-center justify-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground/60 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" /> Try:
+                </span>
+                {EXAMPLE_PROMPTS.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPromptValue(p)}
+                    className="px-3 py-1.5 text-xs rounded-full border border-border/40 bg-card/40 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all"
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
             </Reveal>
           </div>
         </section>
@@ -388,47 +453,74 @@ export default function LandingPage() {
 
         {/* Pricing */}
         <section className="py-24 px-6 border-t border-border/50" id="pricing">
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-7xl mx-auto">
             <Reveal immediate>
-              <div className="text-center mb-16">
-                <h2 className="text-3xl md:text-5xl font-bold tracking-tight">Simple, transparent pricing</h2>
+              <div className="text-center mb-10">
+                <h2 className="text-3xl md:text-5xl font-bold tracking-tight">Pricing</h2>
                 <p className="mt-4 text-muted-foreground max-w-lg mx-auto text-lg">
-                  Start free. Scale as you grow. No hidden fees, no surprises.
+                  Choose the best plan for you.
                 </p>
               </div>
             </Reveal>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+
+            <Reveal delay={60} immediate>
+              <div className="flex items-center justify-center gap-3 mb-12">
+                <button
+                  onClick={() => setBillingAnnual(false)}
+                  className={`px-4 py-2 text-sm rounded-lg transition-colors ${!billingAnnual ? "bg-white/10 text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Monthly
+                </button>
+                <button
+                  onClick={() => setBillingAnnual(true)}
+                  className={`px-4 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 ${billingAnnual ? "bg-white/10 text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Yearly
+                  <span className="px-2 py-0.5 bg-primary/20 text-primary text-xs rounded-full font-semibold">Save 10%</span>
+                </button>
+              </div>
+            </Reveal>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
               {plans.map((plan, i) => (
                 <Reveal key={plan.name} delay={i * 80}>
                   <div
-                    className={`relative h-full p-8 rounded-2xl border transition-all duration-300 ${
+                    className={`relative h-full p-7 rounded-2xl border transition-all duration-300 ${
                       plan.highlight
-                        ? "border-primary/60 bg-gradient-to-b from-primary/10 to-transparent shadow-2xl shadow-primary/20 scale-[1.02]"
+                        ? "border-primary/60 bg-gradient-to-b from-primary/10 to-transparent shadow-2xl shadow-primary/20"
                         : "border-border/50 bg-card/60 hover:border-primary/30"
                     }`}
                   >
-                    {plan.highlight && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-primary to-blue-500 text-primary-foreground text-xs font-semibold rounded-full shadow-lg shadow-primary/30">
-                        Most Popular
-                      </div>
-                    )}
-                    <h3 className="text-xl font-bold">{plan.name}</h3>
-                    <div className="mt-4 flex items-baseline gap-1">
-                      <span className="text-4xl font-bold">{plan.price}</span>
-                      <span className="text-muted-foreground text-sm">{plan.period}</span>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-bold">{plan.name}</h3>
+                      {plan.highlight && (
+                        <span className="px-2.5 py-0.5 bg-primary/20 text-primary text-xs font-semibold rounded-full">
+                          Save 10%
+                        </span>
+                      )}
                     </div>
-                    <p className="mt-2 text-sm text-muted-foreground">{plan.desc}</p>
-                    <Link href="/sign-up">
+                    <div className="mt-4 flex items-baseline gap-1">
+                      <span className="text-3xl font-bold">
+                        {billingAnnual ? plan.priceAnnual : plan.price}
+                      </span>
+                      {plan.period && (
+                        <span className="text-muted-foreground text-sm">
+                          per month{billingAnnual && plan.price !== "Custom" ? ", billed annually" : ""}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-2 text-sm text-muted-foreground min-h-[2.5rem]">{plan.desc}</p>
+                    <Link href={plan.name === "Enterprise" ? "/contact" : "/sign-up"}>
                       <Button
-                        className={`w-full mt-6 ${plan.highlight ? "shadow-lg shadow-primary/20" : ""}`}
+                        className={`w-full mt-5 ${plan.highlight ? "shadow-lg shadow-primary/20" : ""}`}
                         variant={plan.highlight ? "default" : "outline"}
                       >
                         {plan.cta}
                       </Button>
                     </Link>
-                    <ul className="mt-8 space-y-3">
+                    <ul className="mt-6 space-y-2.5">
                       {plan.features.map((f) => (
-                        <li key={f} className="flex items-start gap-3 text-sm">
+                        <li key={f} className="flex items-start gap-2.5 text-sm">
                           <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                           <span>{f}</span>
                         </li>

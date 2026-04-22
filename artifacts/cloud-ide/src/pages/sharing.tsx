@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import FeaturePageLayout from "@/components/FeaturePageLayout";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const api = (p: string) => `${basePath}/api${p}`;
@@ -36,15 +37,15 @@ export default function SharingPage() {
     { value: "private", label: "Private", desc: "Visible only to invited collaborators", icon: "🔒" },
   ];
 
-  if (!config) return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Loading...</div>;
+  if (!config) return (
+    <FeaturePageLayout title="Sharing & Visibility" subtitle="Control who can see, fork, and embed your project" badge="Collaboration" testId="sharing-page">
+      <div className="flex items-center justify-center py-20 text-muted-foreground">Loading...</div>
+    </FeaturePageLayout>
+  );
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-8">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Sharing & Visibility</h1>
-          <p className="text-muted-foreground mt-1">Control who can see, fork, and embed your project</p>
-        </div>
+    <FeaturePageLayout title="Sharing & Visibility" subtitle="Control who can see, fork, and embed your project" badge="Collaboration" testId="sharing-page">
+      <div className="space-y-8">
 
         <div className="bg-card border border-border rounded-lg p-6 space-y-4">
           <h2 className="text-lg font-semibold">Visibility</h2>
@@ -114,6 +115,6 @@ export default function SharingPage() {
           <textarea className="w-full bg-background border border-border rounded px-3 py-2 text-sm h-20" placeholder="Custom description" value={config.socialSharing?.description || ""} onChange={e => update({ socialSharing: { ...config.socialSharing, description: e.target.value } })} />
         </div>
       </div>
-    </div>
+    </FeaturePageLayout>
   );
 }

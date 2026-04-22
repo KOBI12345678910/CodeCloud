@@ -1,4 +1,5 @@
 import { useState } from "react";
+import FeaturePageLayout from "@/components/FeaturePageLayout";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const api = (p: string) => `${basePath}/api${p}`;
@@ -30,12 +31,8 @@ export default function StaticDeployPage() {
   const frameworks = ["react", "vue", "svelte", "next", "nuxt", "astro", "vanilla", "angular", "hugo", "gatsby"];
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-8">
-      <div className="max-w-5xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Static Deployments</h1>
-          <p className="text-muted-foreground mt-1">Deploy static sites with global CDN, custom domains, and instant rollbacks</p>
-        </div>
+    <FeaturePageLayout title="Static Deployments" subtitle="Deploy static sites with global CDN, custom domains, and instant rollbacks" badge="Deployments" testId="static-deploy-page">
+      <div className="space-y-8">
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
@@ -102,6 +99,6 @@ export default function StaticDeployPage() {
           </div>
         </div>
       </div>
-    </div>
+    </FeaturePageLayout>
   );
 }

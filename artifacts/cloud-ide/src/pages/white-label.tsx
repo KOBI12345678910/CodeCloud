@@ -1,4 +1,5 @@
 import { useState } from "react";
+import FeaturePageLayout from "@/components/FeaturePageLayout";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const api = (p: string) => `${basePath}/api${p}`;
@@ -36,13 +37,8 @@ export default function WhiteLabelPage() {
   const tabs = ["branding", "domain", "emails", "features", "seo"] as const;
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-8">
-      <div className="max-w-5xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">White Label</h1>
-          <p className="text-muted-foreground mt-1">Enterprise custom branding — make the platform completely yours</p>
-          <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded mt-2 inline-block">Enterprise Only</span>
-        </div>
+    <FeaturePageLayout title="White Label" subtitle="Enterprise custom branding — make the platform completely yours" badge="Enterprise Only" testId="white-label-page">
+      <div className="space-y-8">
 
         <div className="flex gap-2 border-b border-border pb-2">
           {tabs.map(t => (
@@ -137,6 +133,6 @@ export default function WhiteLabelPage() {
           </div>
         )}
       </div>
-    </div>
+    </FeaturePageLayout>
   );
 }

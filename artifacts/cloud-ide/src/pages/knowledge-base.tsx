@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import FeaturePageLayout from "@/components/FeaturePageLayout";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const api = (p: string) => `${basePath}/api${p}`;
@@ -57,12 +58,8 @@ export default function KnowledgeBasePage() {
   const usagePercent = Math.round((totalTokens / 100000) * 100);
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-8">
-      <div className="max-w-5xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Knowledge Base</h1>
-          <p className="text-muted-foreground mt-1">Give the AI agent custom context — docs, rules, API references, and more</p>
-        </div>
+    <FeaturePageLayout title="Knowledge Base" subtitle="Give the AI agent custom context — docs, rules, API references, and more" badge="AI" testId="knowledge-base-page">
+      <div className="space-y-8">
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-card border border-border rounded-lg p-4">
@@ -147,6 +144,6 @@ export default function KnowledgeBasePage() {
           </div>
         )}
       </div>
-    </div>
+    </FeaturePageLayout>
   );
 }

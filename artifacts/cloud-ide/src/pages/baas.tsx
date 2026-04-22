@@ -1,4 +1,5 @@
 import { useState } from "react";
+import FeaturePageLayout from "@/components/FeaturePageLayout";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const api = (p: string) => `${basePath}/api${p}`;
@@ -35,12 +36,8 @@ export default function BaasPage() {
   ] as const;
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Backend as a Service</h1>
-          <p className="text-muted-foreground mt-1">Database, Auth, Storage, and Edge Functions — all in one place</p>
-        </div>
+    <FeaturePageLayout title="Backend as a Service" subtitle="Database, Auth, Storage, and Edge Functions — all in one place" badge="Platform" testId="baas-page">
+      <div className="space-y-8">
 
         {!initialized ? (
           <div className="bg-card border border-border rounded-lg p-8 text-center space-y-6">
@@ -163,6 +160,6 @@ export default function BaasPage() {
           </>
         )}
       </div>
-    </div>
+    </FeaturePageLayout>
   );
 }

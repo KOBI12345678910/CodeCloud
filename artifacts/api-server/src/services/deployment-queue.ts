@@ -63,8 +63,13 @@ async function ensureLocalRedis(): Promise<boolean> {
 const REDIS_REACHABLE = await ensureLocalRedis();
 
 interface QueueLike {
-  add(name: string, data: DeployJobData, opts?: { jobId?: string }): Promise<{ id: string }>;
+  add(
+    name: string,
+    data: DeployJobData,
+    opts?: { jobId?: string; removeOnComplete?: number | boolean; removeOnFail?: number | boolean },
+  ): Promise<{ id: string }>;
   getJobCounts(...states: string[]): Promise<Record<string, number>>;
+  getJob(jobId: string): Promise<{ getState(): Promise<string>; remove(): Promise<void>; discard(): Promise<void> } | null>;
 }
 
 const inMemCounts = { waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 } as Record<string, number>;
@@ -100,6 +105,9 @@ function makeInMemoryQueue(): QueueLike {
       const out: Record<string, number> = {};
       for (const s of states) out[s] = inMemCounts[s] || 0;
       return out;
+    },
+    async getJob(_jobId: string) {
+      return null;
     },
   };
 }

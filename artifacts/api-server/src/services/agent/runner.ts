@@ -140,7 +140,7 @@ export async function runTask(taskId: string, opts: { approved?: boolean } = {})
         max_tokens: MAX_OUTPUT_TOKENS,
         system: SYSTEM_PROMPT + `\n\nMode: ${task.mode}. Project ID: ${projectId}.`,
         tools: AGENT_TOOLS.map((t) => ({ name: t.name, description: t.description, input_schema: t.input_schema as { type: "object" } })),
-        messages: messages as { role: "user" | "assistant"; content: string | unknown[] }[],
+        messages: messages as any,
       });
 
       totalIn += response.usage?.input_tokens ?? 0;

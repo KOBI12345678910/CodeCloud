@@ -34,7 +34,8 @@ router.post("/buildhub/generate", requireAuth, async (req: AuthenticatedRequest,
   const { prompt, history } = req.body as { prompt?: string; history?: ChatMsg[] };
 
   if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
-    return res.status(400).json({ error: "prompt is required" });
+    res.status(400).json({ error: "prompt is required" });
+    return;
   }
 
   res.setHeader("Content-Type", "text/event-stream");

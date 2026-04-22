@@ -470,7 +470,7 @@ async function checkDeploymentEditorAccess(req: Request, res: Response, deployme
   const [collab] = await db.select().from(collaboratorsTable).where(
     and(eq(collaboratorsTable.projectId, deployment.projectId), eq(collaboratorsTable.userId, userId)),
   );
-  if (!collab || (collab.role !== "editor" && collab.role !== "owner" && collab.role !== "admin")) {
+  if (!collab || (collab.role !== "editor" && collab.role !== "admin")) {
     res.status(403).json({ error: "Forbidden" });
     return false;
   }

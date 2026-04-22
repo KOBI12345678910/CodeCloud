@@ -80,7 +80,7 @@ router.get("/domains/:id/verify", requireAuth, async (req, res): Promise<void> =
       domain: domain.domain,
       dnsVerified: domain.dnsVerified,
       sslStatus: domain.sslStatus,
-      verificationToken: domain.verificationToken,
+      verificationToken: domain.verificationRecord,
     });
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : String(err) });

@@ -45,8 +45,8 @@ router.get("/projects/:id/issues", requireAuth, requireProjectAccess("viewer"), 
 
   try {
     const conditions: SQL[] = [eq(issuesTable.projectId, projectId)];
-    if (status) conditions.push(eq(issuesTable.status, status));
-    if (label) conditions.push(eq(issuesTable.label, label));
+    if (status) conditions.push(eq(issuesTable.status, status as any));
+    if (label) conditions.push(eq(issuesTable.label, label as any));
 
     const orderCol = sortBy === "updatedAt" ? issuesTable.updatedAt : issuesTable.createdAt;
     const orderFn = sortOrder === "asc" ? asc : desc;

@@ -99,6 +99,7 @@ export default function AiPanel({
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [showModelMenu, setShowModelMenu] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
+  const [streamingCost, setStreamingCost] = useState<{ tokens: number; estimatedCost: number; startTime: number } | null>(null);
 
   useEffect(() => {
     fetch(`${apiBase}/ai/multi/models`, { credentials: "include" })
@@ -226,6 +227,11 @@ export default function AiPanel({
       }
       if (mode === "chat") {
         setMessages(prev => [...prev, { role: "assistant", content: "" }]);
+        const inputTokenEstimate = Math.ceil(userText.length / 4);
+        const outputCostPer1k = selectedModel?.pricing?.outputPer1M ? selectedModel.pricing.outputPer1M / 1000 : 0.002;
+        const inputCostPer1k = selectedModel?.pricing?.inputPer1M ? selectedModel.pricing.inputPer1M / 1000 : 0.0005;
+        const inputCostEstimate = (inputTokenEstimate / 1000) * inputCostPer1k;
+        setStreamingCost({ tokens: 0, estimatedCost: inputCostEstimate, startTime: Date.now() });
         const res = await fetch(`${apiBase}/ai/${modeDef.endpoint}?stream=1`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
@@ -237,13 +243,16 @@ export default function AiPanel({
           if (res.status === 429) setError(`Daily limit reached (${errBody.used}/${errBody.limit}).`);
           else setError(errBody.error || `Request failed (${res.status})`);
           setMessages(prev => prev.slice(0, -2));
+          setStreamingCost(null);
           return;
         }
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
         let acc = "";
+        let totalOutputTokens = 0;
         let convId: string | undefined;
+        let finalUsage: UsageInfo | undefined;
         outer: while (true) {
           const { value, done } = await reader.read();
           if (done) break;
@@ -263,6 +272,10 @@ export default function AiPanel({
               const parsed = JSON.parse(dataStr);
               if (eventType === "delta" && typeof parsed.text === "string") {
                 acc += parsed.text;
+                const chunkTokens = Math.ceil(parsed.text.length / 4);
+                totalOutputTokens += chunkTokens;
+                const runningCost = inputCostEstimate + (totalOutputTokens / 1000) * outputCostPer1k;
+                setStreamingCost({ tokens: totalOutputTokens, estimatedCost: runningCost, startTime: Date.now() });
                 setMessages(prev => {
                   const copy = [...prev];
                   copy[copy.length - 1] = { role: "assistant", content: acc };
@@ -270,6 +283,15 @@ export default function AiPanel({
                 });
               } else if (eventType === "done") {
                 if (parsed.conversationId) convId = parsed.conversationId;
+                if (parsed.usage) {
+                  finalUsage = {
+                    inputTokens: parsed.usage.inputTokens ?? inputTokenEstimate,
+                    outputTokens: parsed.usage.outputTokens ?? totalOutputTokens,
+                    cost: parsed.usage.cost ?? (inputCostEstimate + (totalOutputTokens / 1000) * outputCostPer1k),
+                    latencyMs: parsed.latencyMs,
+                    modelLabel: parsed.model || selectedModel?.label,
+                  };
+                }
                 break outer;
               } else if (eventType === "error") {
                 setError(parsed.error || "Stream error");
@@ -278,6 +300,20 @@ export default function AiPanel({
             } catch {}
           }
         }
+        const streamEnd = Date.now();
+        const computedUsage: UsageInfo = finalUsage || {
+          inputTokens: inputTokenEstimate,
+          outputTokens: totalOutputTokens,
+          cost: inputCostEstimate + (totalOutputTokens / 1000) * outputCostPer1k,
+          latencyMs: streamEnd - (streamingCost?.startTime ?? streamEnd),
+          modelLabel: selectedModel?.label || "Default",
+        };
+        setMessages(prev => {
+          const copy = [...prev];
+          copy[copy.length - 1] = { ...copy[copy.length - 1], usage: computedUsage };
+          return copy;
+        });
+        setStreamingCost(null);
         if (convId) { setActiveConvId(convId); fetchConversations(); }
         fetchUsage();
         return;
@@ -323,6 +359,7 @@ export default function AiPanel({
       setMessages(prev => prev.slice(0, -1));
     } finally {
       setLoading(false);
+      setStreamingCost(null);
     }
   };
 
@@ -485,6 +522,27 @@ export default function AiPanel({
           <div className="bg-destructive/10 border border-destructive/30 text-destructive text-xs rounded px-2 py-1.5" data-testid="ai-error">{error}</div>
         )}
       </div>
+
+      {streamingCost && (
+        <div className="px-3 py-1.5 border-t border-border/30 bg-gradient-to-r from-emerald-500/5 to-blue-500/5" data-testid="live-cost-ticker">
+          <div className="flex items-center justify-between text-[10px]">
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-muted-foreground">Generating</span>
+              <span className="font-mono text-emerald-400">{streamingCost.tokens.toLocaleString()} tokens</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-muted-foreground">Cost:</span>
+              <span className="font-mono font-bold text-emerald-400 tabular-nums" style={{ minWidth: "65px", textAlign: "right" }}>
+                ${streamingCost.estimatedCost.toFixed(6)}
+              </span>
+            </div>
+          </div>
+          <div className="mt-1 h-0.5 bg-muted/30 rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-emerald-500 to-blue-500 rounded-full animate-pulse" style={{ width: `${Math.min(100, (streamingCost.tokens / 40) * 100)}%` }} />
+          </div>
+        </div>
+      )}
 
       <div className="p-2 border-t border-border/30">
         <div className="flex items-center gap-1.5">

@@ -303,10 +303,20 @@ import mobileRouter from "./mobile";
 import buildhubRouter from "./buildhub";
 import bountiesRouter from "./bounties";
 import securityRouter from "./security";
+import aiSmartRouterRouter from "./ai-smart-router";
+import creditRolloverRouter from "./credit-rollover";
+import scimRouter from "./scim";
+import designTemplatesRouter from "./design-templates";
+import aiBenchmarkRouter from "./ai-benchmark";
 
 const router: IRouter = Router();
 
 router.use(securityRouter);
+router.use(aiSmartRouterRouter);
+router.use(creditRolloverRouter);
+router.use(scimRouter);
+router.use(designTemplatesRouter);
+router.use(aiBenchmarkRouter);
 router.use(authRouter);
 router.use(exportRouter);
 router.use(formatRouter);

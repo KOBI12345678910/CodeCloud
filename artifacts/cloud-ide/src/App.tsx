@@ -48,6 +48,7 @@ import BillingDashboard from "@/pages/billing";
 import TasksPage from "@/pages/tasks";
 import DomainsPage from "@/pages/domains";
 import SecurityPage from "@/pages/security";
+import AIModelsPage from "@/pages/ai-models";
 import WebhooksPage from "@/pages/webhooks";
 import OnboardingPage from "@/pages/onboarding";
 import SupportPage from "@/pages/support";
@@ -276,6 +277,9 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/security">
               <ProtectedRoute component={SecurityPage} />
+            </Route>
+            <Route path="/ai-models">
+              <ProtectedRoute component={AIModelsPage} />
             </Route>
             <Route path="/profile/:username?">
               <Show when="signed-in">

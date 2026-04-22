@@ -3,18 +3,21 @@ import { Link } from "wouter";
 import { Code2, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
-
-const MARKETING_LINKS = [
-  { label: "Product", href: "/product" },
-  { label: "Solutions", href: "/solutions" },
-  { label: "Pricing", href: "/pricing" },
-  { label: "Blog", href: "/blog" },
-  { label: "Careers", href: "/careers" },
-  { label: "Docs", href: "/docs" },
-];
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useTranslation } from "@/i18n";
 
 export default function MarketingHeader() {
+  const { t } = useTranslation();
   const [scrolled, setScrolled] = useState(false);
+
+  const links = [
+    { key: "product", label: t("nav.product"), href: "/product" },
+    { key: "solutions", label: t("nav.solutions"), href: "/solutions" },
+    { key: "pricing", label: t("nav.pricing"), href: "/pricing" },
+    { key: "blog", label: t("nav.blog"), href: "/blog" },
+    { key: "careers", label: t("nav.careers"), href: "/careers" },
+    { key: "docs", label: t("nav.docs"), href: "/docs" },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -46,11 +49,11 @@ export default function MarketingHeader() {
           className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2"
           data-testid="marketing-nav"
         >
-          {MARKETING_LINKS.map((link) => (
+          {links.map((link) => (
             <Link key={link.href} href={link.href}>
               <button
                 className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-md"
-                data-testid={`nav-${link.label.toLowerCase()}`}
+                data-testid={`nav-${link.key}`}
               >
                 {link.label}
               </button>
@@ -59,6 +62,7 @@ export default function MarketingHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <LanguageSwitcher variant="compact" />
           <Link href="/sign-in">
             <Button
               variant="ghost"
@@ -66,7 +70,7 @@ export default function MarketingHeader() {
               className="hidden sm:inline-flex text-foreground/80 hover:text-foreground hover:bg-white/5"
               data-testid="marketing-login"
             >
-              Log in
+              {t("auth.signIn")}
             </Button>
           </Link>
           <Link href="/sign-up">
@@ -75,7 +79,7 @@ export default function MarketingHeader() {
               className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium shadow-lg shadow-primary/20"
               data-testid="marketing-cta"
             >
-              Start building
+              {t("auth.signUp")}
             </Button>
           </Link>
 
@@ -98,7 +102,7 @@ export default function MarketingHeader() {
                 <span className="text-lg font-bold tracking-tight">CodeCloud</span>
               </div>
               <nav className="p-4 space-y-1">
-                {MARKETING_LINKS.map((link) => (
+                {links.map((link) => (
                   <SheetClose key={link.href} asChild>
                     <Link href={link.href}>
                       <button className="w-full text-left px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors">
@@ -108,17 +112,20 @@ export default function MarketingHeader() {
                   </SheetClose>
                 ))}
                 <div className="pt-4 mt-4 border-t border-border/60 space-y-2">
+                  <div className="px-3 py-2">
+                    <LanguageSwitcher variant="full" align="start" />
+                  </div>
                   <SheetClose asChild>
                     <Link href="/sign-in">
                       <Button variant="ghost" className="w-full justify-start">
-                        Log in
+                        {t("auth.signIn")}
                       </Button>
                     </Link>
                   </SheetClose>
                   <SheetClose asChild>
                     <Link href="/sign-up">
                       <Button className="w-full bg-primary hover:bg-primary/90">
-                        Start building
+                        {t("auth.signUp")}
                       </Button>
                     </Link>
                   </SheetClose>

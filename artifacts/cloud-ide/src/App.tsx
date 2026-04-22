@@ -12,6 +12,7 @@ import ProjectPage from "@/pages/project";
 import ExplorePage from "@/pages/explore";
 import SettingsPage from "@/pages/settings";
 import AdminPage from "@/pages/admin";
+import AdminI18nPage from "@/pages/admin-i18n";
 import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import ForgotPasswordPage from "@/pages/forgot-password";
@@ -59,6 +60,7 @@ import BuildHubWorkspace from "@/pages/buildhub-workspace";
 import NotFound from "@/pages/not-found";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { I18nProvider } from "@/i18n";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
@@ -242,6 +244,9 @@ function ClerkProviderWithRoutes() {
             <Route path="/admin">
               <AdminRoute component={AdminPage} />
             </Route>
+            <Route path="/admin/i18n">
+              <AdminRoute component={AdminI18nPage} />
+            </Route>
             <Route path="/contact"><Redirect to="/support" /></Route>
             <Route path="/project"><Redirect to="/dashboard" /></Route>
             <Route path="/deploy"><Redirect to="/docs" /></Route>
@@ -356,11 +361,13 @@ function ClerkProviderWithRoutes() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider>
-        <WouterRouter base={basePath}>
-          <ClerkProviderWithRoutes />
-        </WouterRouter>
-      </ThemeProvider>
+      <I18nProvider>
+        <ThemeProvider>
+          <WouterRouter base={basePath}>
+            <ClerkProviderWithRoutes />
+          </WouterRouter>
+        </ThemeProvider>
+      </I18nProvider>
     </ErrorBoundary>
   );
 }

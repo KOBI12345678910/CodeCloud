@@ -4,6 +4,8 @@ import { Code2, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useTranslation } from "@/i18n";
 import { z } from "zod";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
@@ -35,6 +37,7 @@ function GoogleIcon({ className }: { className?: string }) {
 }
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -79,7 +82,7 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setServerError(data.error || "Login failed. Please try again.");
+        setServerError(data.message || data.error || "Login failed. Please try again.");
         return;
       }
 
@@ -103,7 +106,7 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setServerError(data.error || `${provider} login is not available right now.`);
+        setServerError(data.message || data.error || `${provider} login is not available right now.`);
         setOauthLoading(null);
         return;
       }
@@ -168,11 +171,14 @@ export default function LoginPage() {
             </Link>
           </div>
 
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Sign in to your account to continue
-            </p>
+          <div className="mb-8 flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">{t("auth.login.title", { defaultValue: "Welcome back" })}</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t("auth.login.subtitle", { defaultValue: "Sign in to your account to continue" })}
+              </p>
+            </div>
+            <LanguageSwitcher variant="compact" />
           </div>
 
           <div className="space-y-3 mb-6">

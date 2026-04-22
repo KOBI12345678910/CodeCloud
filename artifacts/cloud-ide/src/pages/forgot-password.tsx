@@ -4,6 +4,8 @@ import { Code2, Mail, Loader2, AlertCircle, ArrowLeft, CheckCircle2 } from "luci
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useTranslation } from "@/i18n";
 import { z } from "zod";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
@@ -13,6 +15,7 @@ const forgotSchema = z.object({
 });
 
 export default function ForgotPasswordPage() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
   const [serverError, setServerError] = useState("");
@@ -42,7 +45,7 @@ export default function ForgotPasswordPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setServerError(data.error || "Something went wrong. Please try again.");
+        setServerError(data.message || data.error || "Something went wrong. Please try again.");
         return;
       }
 
@@ -101,7 +104,10 @@ export default function ForgotPasswordPage() {
         ) : (
           <>
             <div className="mb-6">
-              <h1 className="text-2xl font-bold tracking-tight">Forgot your password?</h1>
+              <div className="flex items-center justify-between gap-4">
+                <h1 className="text-2xl font-bold tracking-tight">{t("auth.forgot.title", { defaultValue: "Forgot your password?" })}</h1>
+                <LanguageSwitcher variant="compact" />
+              </div>
               <p className="text-sm text-muted-foreground mt-1">
                 Enter your email and we'll send you a reset link
               </p>

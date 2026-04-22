@@ -13,25 +13,28 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-
-const PUBLIC_NAV = [
-  { label: "BuildHub AI", href: "/build", badge: "New" as const },
-  { label: "Product", href: "/product" },
-  { label: "Solutions", href: "/solutions" },
-  { label: "Pricing", href: "/pricing" },
-  { label: "Blog", href: "/blog" },
-  { label: "Docs", href: "/docs" },
-];
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useTranslation } from "@/i18n";
 
 interface HeaderProps {
   variant?: "default" | "minimal";
 }
 
 export default function Header({ variant = "default" }: HeaderProps) {
+  const { t } = useTranslation();
   const { user } = useUser();
   const { signOut } = useClerk();
   const [location, navigate] = useLocation();
   const [scrolled, setScrolled] = useState(false);
+
+  const PUBLIC_NAV = [
+    { key: "buildhub", label: t("nav.buildhub"), href: "/build", badge: t("common.new") },
+    { key: "product", label: t("nav.product"), href: "/product" },
+    { key: "solutions", label: t("nav.solutions"), href: "/solutions" },
+    { key: "pricing", label: t("nav.pricing"), href: "/pricing" },
+    { key: "blog", label: t("nav.blog"), href: "/blog" },
+    { key: "docs", label: t("nav.docs"), href: "/docs" },
+  ] as Array<{ key: string; label: string; href: string; badge?: string }>;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -74,12 +77,12 @@ export default function Header({ variant = "default" }: HeaderProps) {
                       ? "text-white"
                       : "text-white/60 hover:text-white"
                   }`}
-                  data-testid={`nav-${link.label.toLowerCase().replace(/\s+/g, "-")}`}
+                  data-testid={`nav-${link.key}`}
                 >
                   {link.label}
-                  {(link as any).badge && (
+                  {link.badge && (
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white leading-none">
-                      {(link as any).badge}
+                      {link.badge}
                     </span>
                   )}
                 </button>
@@ -92,10 +95,11 @@ export default function Header({ variant = "default" }: HeaderProps) {
 
         {user ? (
           <>
+            <LanguageSwitcher variant="icon" className="text-white/70 hover:text-white hover:bg-white/5" />
             <Link href="/dashboard">
               <Button variant="ghost" size="sm" className="hidden sm:inline-flex text-white/70 hover:text-white hover:bg-white/5">
                 <LayoutDashboard className="w-4 h-4 mr-1.5" />
-                Dashboard
+                {t("nav.dashboard")}
               </Button>
             </Link>
             <DropdownMenu>
@@ -106,10 +110,10 @@ export default function Header({ variant = "default" }: HeaderProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-72">
-                <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                <DropdownMenuLabel>{t("auth.notifications")}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <div className="p-4 text-center text-sm text-muted-foreground">
-                  No new notifications
+                  {t("auth.notifications.empty")}
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -130,33 +134,34 @@ export default function Header({ variant = "default" }: HeaderProps) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/profile")}><User className="w-4 h-4 mr-2" /> Profile</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/settings")}><Settings className="w-4 h-4 mr-2" /> Settings</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/pricing")}><CreditCard className="w-4 h-4 mr-2" /> Billing</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/profile")}><User className="w-4 h-4 mr-2" /> {t("auth.profile")}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/settings")}><Settings className="w-4 h-4 mr-2" /> {t("auth.settings")}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/pricing")}><CreditCard className="w-4 h-4 mr-2" /> {t("auth.billing")}</DropdownMenuItem>
                 {isAdmin && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => navigate("/admin")}>
-                      <Shield className="w-4 h-4 mr-2" /> Admin
-                      <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0">Admin</Badge>
+                      <Shield className="w-4 h-4 mr-2" /> {t("auth.admin")}
+                      <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0">{t("auth.admin")}</Badge>
                     </DropdownMenuItem>
                   </>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
-                  <LogOut className="w-4 h-4 mr-2" /> Log out
+                  <LogOut className="w-4 h-4 mr-2" /> {t("auth.signOut")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </>
         ) : (
           <div className="hidden sm:flex items-center gap-2">
+            <LanguageSwitcher variant="icon" className="text-white/70 hover:text-white hover:bg-white/5" />
             <Link href="/login">
               <button
                 className="px-4 py-2 text-[14px] font-medium text-white/80 hover:text-white transition-colors"
                 data-testid="header-login"
               >
-                Log in
+                {t("auth.signIn")}
               </button>
             </Link>
             <Link href="/register">
@@ -164,7 +169,7 @@ export default function Header({ variant = "default" }: HeaderProps) {
                 className="px-4 py-2 text-[14px] font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-md shadow-lg shadow-blue-600/20 hover:shadow-blue-500/40 transition-all"
                 data-testid="header-signup"
               >
-                Start building
+                {t("auth.signUp")}
               </button>
             </Link>
           </div>

@@ -107,10 +107,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
       const data = await res.json();
       if (!res.ok) {
-        set({ isLoading: false, error: data.error || "Login failed" });
+        set({ isLoading: false, error: data.message || data.error || "Login failed" });
         return;
       }
       storeTokens(data.accessToken, data.refreshToken);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("cc:locale-from-auth", { detail: data.user?.locale ?? "" }),
+        );
+      }
       set({
         user: data.user,
         token: data.accessToken,
@@ -137,7 +142,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
       const data = await res.json();
       if (!res.ok) {
-        set({ isLoading: false, error: data.error || "Registration failed" });
+        set({ isLoading: false, error: data.message || data.error || "Registration failed" });
         return;
       }
       storeTokens(data.accessToken, data.refreshToken);
@@ -219,7 +224,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
       const data = await res.json();
       if (!res.ok) {
-        set({ isLoading: false, error: data.error || "Google login failed" });
+        set({ isLoading: false, error: data.message || data.error || "Google login failed" });
         return;
       }
       storeTokens(data.accessToken, data.refreshToken);
@@ -245,7 +250,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
       const data = await res.json();
       if (!res.ok) {
-        set({ isLoading: false, error: data.error || "GitHub login failed" });
+        set({ isLoading: false, error: data.message || data.error || "GitHub login failed" });
         return;
       }
       storeTokens(data.accessToken, data.refreshToken);
@@ -274,6 +279,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const res = await authenticatedFetch("/auth/me", token);
       if (res.ok) {
         const user = await res.json();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("cc:locale-from-auth", { detail: user?.locale ?? "" }),
+          );
+        }
         set({
           user,
           token,

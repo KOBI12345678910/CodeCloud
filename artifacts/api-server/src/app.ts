@@ -7,6 +7,7 @@ import { logger } from "./lib/logger";
 import { corsMiddleware, helmetMiddleware, requestId, responseTime, noSniff } from "./middlewares/security";
 import { requestLogger } from "./middlewares/logging";
 import { generalLimiter } from "./middlewares/rateLimit";
+import { i18nMiddleware } from "./middlewares/i18n";
 
 const app: Express = express();
 
@@ -42,6 +43,7 @@ app.use(corsMiddleware);
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(generalLimiter);
+app.use(i18nMiddleware);
 
 app.use(clerkMiddleware());
 

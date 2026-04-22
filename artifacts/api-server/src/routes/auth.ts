@@ -22,6 +22,7 @@ import {
   getPrimaryEmail,
 } from "../services/github";
 import { requireJwtAuth } from "../middlewares/jwtAuth";
+import { sendLocalizedError, localizedError } from "../lib/errors";
 import { RegisterSchema, LoginSchema, RefreshTokenSchema, ChangePasswordSchema, ForgotPasswordSchema, ResetPasswordSchema } from "../validators/schemas";
 import type { AuthenticatedRequest } from "../types";
 import { logAudit, getClientIp, getUserAgent } from "../services/audit";
@@ -73,7 +74,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
   const [existingEmail] = await db.select().from(usersTable).where(eq(usersTable.email, email));
   if (existingEmail) {
-    res.status(409).json({ error: "Email already registered" });
+    sendLocalizedError(req, res, "errors.auth.emailTaken");
     return;
   }
 
@@ -82,7 +83,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     .from(usersTable)
     .where(eq(usersTable.username, username));
   if (existingUsername) {
-    res.status(409).json({ error: "Username already taken" });
+    sendLocalizedError(req, res, "errors.auth.usernameTaken");
     return;
   }
 
@@ -150,7 +151,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
   if (!user) {
-    res.status(401).json({ error: "Invalid email or password" });
+    sendLocalizedError(req, res, "errors.auth.invalidCredentials");
     return;
   }
 
@@ -158,17 +159,14 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     const minutesLeft = Math.ceil(
       (user.lockedUntil.getTime() - Date.now()) / 60000
     );
-    res.status(423).json({
-      error: `Account locked. Try again in ${minutesLeft} minute(s)`,
-      lockedUntil: user.lockedUntil.toISOString(),
-    });
+    const { status, body } = localizedError(req, "errors.auth.locked", { minutes: minutesLeft });
+    res.status(status).json({ ...body, lockedUntil: user.lockedUntil.toISOString() });
     return;
   }
 
   if (!user.passwordHash) {
-    res.status(401).json({
-      error: `This account uses ${user.authProvider} login. Please sign in with ${user.authProvider}.`,
-    });
+    const { status, body } = localizedError(req, "errors.auth.oauthOnly", { provider: user.authProvider });
+    res.status(status).json(body);
     return;
   }
 
@@ -185,17 +183,13 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     await db.update(usersTable).set(updateData).where(eq(usersTable.id, user.id));
 
     if (newAttempts >= MAX_FAILED_ATTEMPTS) {
-      res.status(423).json({
-        error: "Too many failed attempts. Account locked for 15 minutes.",
-        lockedUntil: (updateData.lockedUntil as Date).toISOString(),
-      });
+      const { status, body } = localizedError(req, "errors.auth.lockedJustNow");
+      res.status(status).json({ ...body, lockedUntil: (updateData.lockedUntil as Date).toISOString() });
       return;
     }
 
-    res.status(401).json({
-      error: "Invalid email or password",
-      remainingAttempts: MAX_FAILED_ATTEMPTS - newAttempts,
-    });
+    const { status, body } = localizedError(req, "errors.auth.invalidCredentials");
+    res.status(status).json({ ...body, remainingAttempts: MAX_FAILED_ATTEMPTS - newAttempts });
     return;
   }
 
@@ -235,6 +229,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
       role: user.role,
       plan: user.plan,
       avatarUrl: user.avatarUrl,
+      locale: ((user.preferences as Record<string, unknown> | null)?.locale as string | undefined) ?? null,
     },
     accessToken,
     refreshToken,
@@ -269,7 +264,7 @@ router.post("/auth/refresh", async (req, res): Promise<void> => {
     .where(eq(usersTable.id, result.userId));
 
   if (!user) {
-    res.status(401).json({ error: "User not found" });
+    sendLocalizedError(req, res, "errors.auth.userNotFound");
     return;
   }
 
@@ -350,6 +345,7 @@ router.get("/auth/me", requireJwtAuth, async (req, res): Promise<void> => {
     authProvider: user.authProvider,
     emailVerified: user.emailVerified,
     createdAt: user.createdAt,
+    locale: ((user.preferences as Record<string, unknown> | null)?.locale as string | undefined) ?? null,
   });
 });
 
@@ -365,13 +361,13 @@ router.post("/auth/change-password", requireJwtAuth, async (req, res): Promise<v
   const { currentPassword, newPassword } = parsed.data;
 
   if (!user.passwordHash) {
-    res.status(400).json({ error: "Cannot change password for OAuth accounts" });
+    sendLocalizedError(req, res, "errors.auth.passwordOauth");
     return;
   }
 
   const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
   if (!isValid) {
-    res.status(401).json({ error: "Current password is incorrect" });
+    sendLocalizedError(req, res, "errors.auth.passwordCurrentWrong");
     return;
   }
 
@@ -474,20 +470,20 @@ router.post("/auth/reset-password", async (req, res): Promise<void> => {
 
   const tokenData = pendingResetTokens.get(token);
   if (!tokenData) {
-    res.status(400).json({ error: "Invalid or expired reset token. Please request a new password reset." });
+    sendLocalizedError(req, res, "errors.auth.resetTokenInvalid");
     return;
   }
 
   if (Date.now() - tokenData.createdAt > RESET_TOKEN_TTL_MS) {
     pendingResetTokens.delete(token);
-    res.status(400).json({ error: "Reset token has expired. Please request a new password reset." });
+    sendLocalizedError(req, res, "errors.auth.resetTokenExpired");
     return;
   }
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, tokenData.userId));
   if (!user) {
     pendingResetTokens.delete(token);
-    res.status(400).json({ error: "User not found" });
+    sendLocalizedError(req, res, "errors.auth.userNotFound");
     return;
   }
 

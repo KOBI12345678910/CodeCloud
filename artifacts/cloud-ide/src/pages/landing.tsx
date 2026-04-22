@@ -8,6 +8,8 @@ import {
 import { Button } from "@/components/ui/button";
 import MarketingHeader from "@/components/MarketingHeader";
 import MarketingFooter from "@/components/MarketingFooter";
+import HreflangTags from "@/components/HreflangTags";
+import { useTranslation, LANGUAGES } from "@/i18n";
 
 function shouldSkipAnimations(): boolean {
   if (typeof window === "undefined") return true;
@@ -226,6 +228,7 @@ const FOOTER_LINKS: Record<string, { label: string; href: string }[]> = {
 };
 
 export default function LandingPage() {
+  const { t } = useTranslation();
   const statsRef = useRef<HTMLDivElement>(null);
   const [statsVisible, setStatsVisible] = useState(shouldSkipAnimations());
 
@@ -260,6 +263,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground antialiased" data-testid="landing-page">
+      <HreflangTags path="/" />
       <MarketingHeader />
 
       <main>
@@ -283,7 +287,7 @@ export default function LandingPage() {
               <Link href="/blog">
                 <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-xs sm:text-sm text-primary mb-8 hover:bg-primary/10 transition-colors cursor-pointer">
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Now with AI-powered code assistance</span>
+                  <span>{t("landing.hero.eyebrow")}</span>
                   <ChevronRight className="w-3 h-3" />
                 </div>
               </Link>
@@ -291,17 +295,13 @@ export default function LandingPage() {
 
             <Reveal delay={80} immediate>
               <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05]">
-                Build, ship, and
-                <br />
-                <span className="bg-gradient-to-r from-primary via-blue-400 to-primary bg-clip-text text-transparent">
-                  scale from your browser
-                </span>
+                {t("landing.hero.title")}
               </h1>
             </Reveal>
 
             <Reveal delay={160} immediate>
               <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                The cloud IDE trusted by 50,000+ developers. Write code, collaborate with your team, and deploy to production — without ever leaving the browser.
+                {t("landing.hero.subtitle", { count: LANGUAGES.length })}
               </p>
             </Reveal>
 
@@ -309,14 +309,13 @@ export default function LandingPage() {
               <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link href="/sign-up">
                   <Button size="lg" className="px-8 h-12 text-base shadow-lg shadow-primary/20" data-testid="button-get-started">
-                    Start building <ArrowRight className="w-4 h-4 ml-2" />
+                    {t("landing.hero.ctaPrimary")} <ArrowRight className="w-4 h-4 ml-2 rtl:rotate-180" />
                   </Button>
                 </Link>
                 <Button size="lg" variant="outline" className="px-8 h-12 text-base bg-white/5 border-border/60 hover:bg-white/10" onClick={scrollToFeatures} data-testid="button-explore">
-                  See features
+                  {t("landing.hero.ctaSecondary")}
                 </Button>
               </div>
-              <p className="mt-4 text-sm text-muted-foreground">No credit card required. Free forever tier available.</p>
             </Reveal>
 
             <Reveal delay={320} immediate>

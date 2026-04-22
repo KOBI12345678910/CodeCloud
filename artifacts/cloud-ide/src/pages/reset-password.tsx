@@ -4,6 +4,8 @@ import { Code2, Lock, Eye, EyeOff, Loader2, AlertCircle, Check, X, CheckCircle2 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useTranslation } from "@/i18n";
 import { z } from "zod";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
@@ -56,6 +58,7 @@ function usePasswordStrength(password: string) {
 }
 
 export default function ResetPasswordPage() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const searchString = useSearch();
   const params = new URLSearchParams(searchString);
@@ -113,7 +116,7 @@ export default function ResetPasswordPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setServerError(data.error || "Failed to reset password. Please try again.");
+        setServerError(data.message || data.error || "Failed to reset password. Please try again.");
         return;
       }
 
@@ -190,7 +193,10 @@ export default function ResetPasswordPage() {
         ) : (
           <>
             <div className="mb-6">
-              <h1 className="text-2xl font-bold tracking-tight">Set new password</h1>
+              <div className="flex items-center justify-between gap-4">
+                <h1 className="text-2xl font-bold tracking-tight">{t("auth.reset.title", { defaultValue: "Set new password" })}</h1>
+                <LanguageSwitcher variant="compact" />
+              </div>
               <p className="text-sm text-muted-foreground mt-1">
                 Choose a strong password for your account
               </p>

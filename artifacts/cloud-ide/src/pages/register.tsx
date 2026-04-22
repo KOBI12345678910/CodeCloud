@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useTranslation } from "@/i18n";
 import { z } from "zod";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
@@ -86,6 +88,7 @@ function GoogleIcon({ className }: { className?: string }) {
 }
 
 export default function RegisterPage() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -141,7 +144,7 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setServerError(data.error || "Registration failed. Please try again.");
+        setServerError(data.message || data.error || "Registration failed. Please try again.");
         return;
       }
 
@@ -167,7 +170,7 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setServerError(data.error || `${provider} sign-up is not available right now.`);
+        setServerError(data.message || data.error || `${provider} sign-up is not available right now.`);
         setOauthLoading(null);
         return;
       }
@@ -244,7 +247,10 @@ export default function RegisterPage() {
           </div>
 
           <div className="mb-6">
-            <h1 className="text-2xl font-bold tracking-tight">Create your account</h1>
+            <div className="flex items-start justify-between gap-4 mb-2">
+              <h1 className="text-2xl font-bold tracking-tight">{t("auth.register.title", { defaultValue: "Create your account" })}</h1>
+              <LanguageSwitcher variant="compact" />
+            </div>
             <p className="text-sm text-muted-foreground mt-1">
               Get started with CodeCloud for free
             </p>

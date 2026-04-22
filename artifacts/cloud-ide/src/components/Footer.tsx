@@ -1,38 +1,7 @@
 import { Link } from "wouter";
 import { Code2, Github, Twitter, MessageCircle } from "lucide-react";
-
-const COLUMNS = [
-  {
-    title: "Product",
-    links: [
-      { label: "Features", href: "/explore" },
-      { label: "Templates", href: "/explore?tab=templates" },
-      { label: "Pricing", href: "/pricing" },
-      { label: "Changelog", href: "/changelog" },
-    ],
-  },
-  {
-    title: "Resources",
-    links: [
-      { label: "Docs", href: "/docs" },
-      { label: "API Reference", href: "/api-docs" },
-      { label: "Blog", href: "/blog" },
-      { label: "Status", href: "/status" },
-      { label: "Security", href: "/security" },
-    ],
-  },
-  {
-    title: "Company",
-    links: [
-      { label: "About", href: "/about" },
-      { label: "Careers", href: "/careers" },
-      { label: "Contact", href: "/support" },
-      { label: "Privacy", href: "/privacy" },
-      { label: "Terms", href: "/terms" },
-      { label: "Compliance", href: "/compliance" },
-    ],
-  },
-];
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useTranslation } from "@/i18n";
 
 const SOCIALS = [
   { label: "GitHub", icon: Github, href: "https://github.com" },
@@ -41,6 +10,43 @@ const SOCIALS = [
 ];
 
 export default function Footer() {
+  const { t } = useTranslation();
+  const COLUMNS = [
+    {
+      key: "product",
+      title: t("footer.product"),
+      links: [
+        { label: t("footer.features"), href: "/explore" },
+        { label: t("footer.templates"), href: "/explore?tab=templates" },
+        { label: t("nav.pricing"), href: "/pricing" },
+        { label: t("footer.changelog"), href: "/changelog" },
+      ],
+    },
+    {
+      key: "resources",
+      title: t("footer.resources"),
+      links: [
+        { label: t("nav.docs"), href: "/docs" },
+        { label: t("footer.apiReference"), href: "/api-docs" },
+        { label: t("nav.blog"), href: "/blog" },
+        { label: t("footer.status"), href: "/status" },
+        { label: t("footer.security"), href: "/security" },
+      ],
+    },
+    {
+      key: "company",
+      title: t("footer.company"),
+      links: [
+        { label: t("footer.about"), href: "/about" },
+        { label: t("nav.careers"), href: "/careers" },
+        { label: t("footer.contact"), href: "/support" },
+        { label: t("footer.privacy"), href: "/privacy" },
+        { label: t("footer.terms"), href: "/terms" },
+        { label: t("footer.compliance"), href: "/compliance" },
+      ],
+    },
+  ];
+
   return (
     <footer className="border-t border-border/50 bg-card/30" data-testid="app-footer">
       <div className="max-w-7xl mx-auto px-6 py-12">
@@ -55,9 +61,9 @@ export default function Footer() {
               </div>
             </Link>
             <p className="text-sm text-muted-foreground mb-4 max-w-xs">
-              Build, run, and deploy code from anywhere. The cloud IDE for modern developers.
+              {t("footer.tagline")}
             </p>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mb-4">
               {SOCIALS.map((s) => (
                 <a
                   key={s.label}
@@ -72,32 +78,22 @@ export default function Footer() {
                 </a>
               ))}
             </div>
+            <LanguageSwitcher variant="full" align="start" />
           </div>
 
           {COLUMNS.map((col) => (
-            <div key={col.title}>
-              <h3 className="text-sm font-semibold mb-3" data-testid={`footer-col-${col.title.toLowerCase()}`}>
+            <div key={col.key}>
+              <h3 className="text-sm font-semibold mb-3" data-testid={`footer-col-${col.key}`}>
                 {col.title}
               </h3>
               <ul className="space-y-2">
                 {col.links.map((link) => (
-                  <li key={link.label}>
-                    {link.href.startsWith("mailto:") || link.href.startsWith("http") ? (
-                      <a
-                        href={link.href}
-                        target={link.href.startsWith("http") ? "_blank" : undefined}
-                        rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                      >
+                  <li key={link.href}>
+                    <Link href={link.href}>
+                      <span className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                         {link.label}
-                      </a>
-                    ) : (
-                      <Link href={link.href}>
-                        <span className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                          {link.label}
-                        </span>
-                      </Link>
-                    )}
+                      </span>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -107,18 +103,12 @@ export default function Footer() {
 
         <div className="border-t border-border/50 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground" data-testid="footer-copyright">
-            &copy; {new Date().getFullYear()} CodeCloud. All rights reserved.
+            &copy; {new Date().getFullYear()} CodeCloud. {t("footer.rights")}
           </p>
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <Link href="/privacy">
-              <span className="hover:text-foreground transition-colors cursor-pointer">Privacy Policy</span>
-            </Link>
-            <Link href="/terms">
-              <span className="hover:text-foreground transition-colors cursor-pointer">Terms of Service</span>
-            </Link>
-            <Link href="/compliance">
-              <span className="hover:text-foreground transition-colors cursor-pointer">Compliance</span>
-            </Link>
+            <Link href="/privacy"><span className="hover:text-foreground transition-colors cursor-pointer">{t("footer.privacy")}</span></Link>
+            <Link href="/terms"><span className="hover:text-foreground transition-colors cursor-pointer">{t("footer.terms")}</span></Link>
+            <Link href="/compliance"><span className="hover:text-foreground transition-colors cursor-pointer">{t("footer.compliance")}</span></Link>
           </div>
         </div>
       </div>

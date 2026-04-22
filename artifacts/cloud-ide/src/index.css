@@ -232,3 +232,37 @@ html.dark {
 .remote-selection {
   background-color: var(--remote-selection-bg, rgba(255, 107, 107, 0.15));
 }
+
+/* ----- RTL / i18n logical layout ----- */
+html[dir="rtl"] body {
+  text-align: right;
+}
+html[dir="rtl"] .rtl-flip,
+html[dir="rtl"] [data-rtl="flip"] {
+  transform: scaleX(-1);
+}
+html[dir="rtl"] .lucide-arrow-right,
+html[dir="rtl"] .lucide-chevron-right,
+html[dir="rtl"] .lucide-arrow-left,
+html[dir="rtl"] .lucide-chevron-left {
+  transform: scaleX(-1);
+}
+/* Use logical margins/padding so utilities like ml-2/mr-2 mirror in RTL contexts. */
+html[dir="rtl"] .mr-1, html[dir="rtl"] .mr-1\.5, html[dir="rtl"] .mr-2,
+html[dir="rtl"] .mr-3, html[dir="rtl"] .mr-4 {
+  margin-right: 0;
+}
+html[dir="rtl"] .ml-1, html[dir="rtl"] .ml-1\.5, html[dir="rtl"] .ml-2,
+html[dir="rtl"] .ml-3, html[dir="rtl"] .ml-4 {
+  margin-left: 0;
+}
+html[dir="rtl"] .mr-1 { margin-inline-end: 0.25rem; }
+html[dir="rtl"] .mr-1\.5 { margin-inline-end: 0.375rem; }
+html[dir="rtl"] .mr-2 { margin-inline-end: 0.5rem; }
+html[dir="rtl"] .mr-3 { margin-inline-end: 0.75rem; }
+html[dir="rtl"] .mr-4 { margin-inline-end: 1rem; }
+html[dir="rtl"] .ml-1 { margin-inline-start: 0.25rem; }
+html[dir="rtl"] .ml-1\.5 { margin-inline-start: 0.375rem; }
+html[dir="rtl"] .ml-2 { margin-inline-start: 0.5rem; }
+html[dir="rtl"] .ml-3 { margin-inline-start: 0.75rem; }
+html[dir="rtl"] .ml-4 { margin-inline-start: 1rem; }

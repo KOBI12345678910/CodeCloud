@@ -4,6 +4,7 @@ import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { AGENT_TOOLS, dispatchTool, type ToolContext } from "./tools";
 import { createCheckpoint } from "./checkpoints";
 import { emitAgentEvent, type AgentEventType } from "./realtime";
+import { languageInstructionForConversation } from "./lang-detect";
 
 export type AgentTier = "standard" | "power" | "max";
 export type AgentMode = "plan" | "build" | "background";
@@ -138,7 +139,7 @@ export async function runTask(taskId: string, opts: { approved?: boolean } = {})
       const response = await anthropic.messages.create({
         model,
         max_tokens: MAX_OUTPUT_TOKENS,
-        system: SYSTEM_PROMPT + `\n\nMode: ${task.mode}. Project ID: ${projectId}.`,
+        system: SYSTEM_PROMPT + `\n\nMode: ${task.mode}. Project ID: ${projectId}.\n\n${languageInstructionForConversation(task.conversationId, task.prompt)}`,
         tools: AGENT_TOOLS.map((t) => ({ name: t.name, description: t.description, input_schema: t.input_schema as { type: "object" } })),
         messages: messages as any,
       });

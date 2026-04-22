@@ -1,0 +1,21 @@
+{
+  "name": "@workspace/i18n",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./registry": "./src/registry/index.ts",
+    "./formatters": "./src/formatters.ts",
+    "./detect": "./src/detect.ts",
+    "./locales/*": "./src/locales/*"
+  },
+  "scripts": {
+    "extract": "tsx ./scripts/extract-keys.ts",
+    "machine-translate": "tsx ./scripts/machine-translate.ts"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsx": "catalog:"
+  }
+}

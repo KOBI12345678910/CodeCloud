@@ -28,6 +28,8 @@ The frontend utilizes React 19, Vite, and Tailwind CSS v4 for a responsive and m
 - **Credits & Billing:** Stripe integration for billing, credit management, on-demand top-ups, and metered billing. An Admin Pricing Engine allows full control over service prices and margins, complemented by a Service Marketplace for granular billing. Supports 11 payment methods.
 - **Universal AI Model Connector:** Allows integration of any AI model from 25+ providers, with admin controls for pricing, rate limits, and health monitoring.
 - **Super Admin Control Center:** A unified dashboard providing access to 12 admin control panels.
+- **Staff Portal (`/staff`):** A separate employee-only management portal with sidebar navigation (RTL Hebrew), 7 modules: Dashboard (KPIs, activity feed), Customer Management (search, filter, CRUD, user profiles), Billing & Pricing (plans, services, coupons, invoices), Support & Tickets (priority-based ticket system), Platform Management (servers, DB, CDN, AI, security), Content & Templates, System Settings (toggles for maintenance mode, registration, SSL, 2FA, backups). Protected by `AdminRoute` (admin/owner role required).
+- **Staff Login (`/staff-login`):** Dedicated employee login page with red/dark theme, separate from customer login. Accessible via subtle footer link.
 - **SCIM v2:** Supports enterprise SSO user provisioning.
 - **Design Templates:** 18 ready-to-deploy templates across various categories.
 - **Design System:** Comprehensive design tokens exportable to various formats.

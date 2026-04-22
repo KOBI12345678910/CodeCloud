@@ -93,6 +93,8 @@ import ThemesPage from "@/pages/themes";
 import ComponentLibraryPage from "@/pages/component-library";
 import FigmaImportPage from "@/pages/figma-import";
 import AiCodeReviewPage from "@/pages/ai-code-review";
+import StaffPortalPage from "@/pages/staff-portal";
+import StaffLoginPage from "@/pages/staff-login";
 const PlanModePage = lazy(() => import("@/pages/plan"));
 const VisualEditPage = lazy(() => import("@/pages/visual-edit"));
 const DeployPage = lazy(() => import("@/pages/deploy"));
@@ -451,6 +453,12 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/super-admin">
               <ProtectedRoute component={SuperAdminPage} />
+            </Route>
+            <Route path="/staff-login">
+              <StaffLoginPage />
+            </Route>
+            <Route path="/staff">
+              <AdminRoute component={StaffPortalPage} />
             </Route>
             <Route path="/admin/observability">
               <AdminRoute component={ObservabilityPage} />

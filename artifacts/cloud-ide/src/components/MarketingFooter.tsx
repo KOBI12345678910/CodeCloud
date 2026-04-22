@@ -82,6 +82,7 @@ export default function MarketingFooter() {
         </div>
         <div className="mt-12 pt-8 border-t border-border/50 flex flex-col md:flex-row items-center justify-between text-sm text-muted-foreground gap-4">
           <span>&copy; {new Date().getFullYear()} CodeCloud. {t("footer.rights")}</span>
+          <Link href="/staff-login" className="text-muted-foreground/50 hover:text-muted-foreground text-xs transition-colors">Staff</Link>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" /> {t("footer.badge.encrypted")}</span>
             <span className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5" /> {t("footer.badge.soc2")}</span>

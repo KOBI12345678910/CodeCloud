@@ -7,6 +7,8 @@ export * from "./deployments";
 export * from "./deployment-regions";
 export * from "./console-history";
 export * from "./project-secrets";
+export * from "./ai-byok-keys";
+export * from "./ai-model-overrides";
 export * from "./organizations";
 export * from "./org-members";
 export * from "./file-versions";

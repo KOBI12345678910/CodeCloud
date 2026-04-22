@@ -59,6 +59,7 @@ import { AboutPage, TermsPage, PrivacyPage } from "@/pages/marketing-stub";
 import BuildHubPage from "@/pages/buildhub";
 import BuildHubWorkspace from "@/pages/buildhub-workspace";
 import BountiesPage from "@/pages/bounties";
+import MultiAiPage from "@/pages/multi-ai";
 import NotFound from "@/pages/not-found";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -350,6 +351,9 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/error-tracking">
               <ProtectedRoute component={ErrorTrackingPage} />
+            </Route>
+            <Route path="/multi-ai">
+              <ProtectedRoute component={MultiAiPage} />
             </Route>
             <Route path="/bounties" component={BountiesPage} />
             <Route path="/bounties/:id" component={BountiesPage} />

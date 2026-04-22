@@ -5,8 +5,9 @@ import { useGetProfile, useUpdateProfile, getGetProfileQueryKey } from "@workspa
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Code2, LogOut, ArrowLeft, Key, Copy, Eye, EyeOff, Trash2, Shield, Palette,
-  Zap, Check, CreditCard, User, Settings, AlertTriangle, Camera, Lock,
+  Zap, Check, CreditCard, User, Settings, AlertTriangle, Camera, Lock, Sparkles,
 } from "lucide-react";
+import MultiAiSettings from "@/components/ide/MultiAiSettings";
 import { useTheme } from "@/contexts/theme-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -19,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
-type TabId = "profile" | "account" | "editor" | "billing" | "api-keys";
+type TabId = "profile" | "account" | "editor" | "billing" | "api-keys" | "multi-ai";
 
 const TABS: { id: TabId; label: string; icon: typeof User }[] = [
   { id: "profile", label: "Profile", icon: User },
@@ -27,6 +28,7 @@ const TABS: { id: TabId; label: string; icon: typeof User }[] = [
   { id: "editor", label: "Editor", icon: Settings },
   { id: "billing", label: "Billing", icon: CreditCard },
   { id: "api-keys", label: "API Keys", icon: Key },
+  { id: "multi-ai", label: "Multi-AI", icon: Sparkles },
 ];
 
 export default function SettingsPage() {
@@ -555,6 +557,10 @@ export default function SettingsPage() {
                   )}
                 </CardContent>
               </Card>
+            )}
+
+            {activeTab === "multi-ai" && (
+              <MultiAiSettings />
             )}
           </div>
         </div>

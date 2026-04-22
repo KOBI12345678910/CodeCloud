@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, lazy, Suspense } from "react";
 import { ClerkProvider, SignIn, SignUp, Show, useClerk } from "@clerk/react";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
@@ -79,6 +79,10 @@ import AdminPricingPage from "@/pages/admin-pricing";
 import ServiceMarketplacePage from "@/pages/service-marketplace";
 import ModelConnectorPage from "@/pages/model-connector";
 import SuperAdminPage from "@/pages/super-admin";
+const PlanModePage = lazy(() => import("@/pages/plan"));
+const VisualEditPage = lazy(() => import("@/pages/visual-edit"));
+const DeployPage = lazy(() => import("@/pages/deploy"));
+const CollaboratePage = lazy(() => import("@/pages/collaborate"));
 import NotFound from "@/pages/not-found";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -123,6 +127,14 @@ function HomeRedirect() {
         <LandingPage />
       </Show>
     </>
+  );
+}
+
+function LazyFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="animate-pulse text-muted-foreground text-sm">Loading…</div>
+    </div>
   );
 }
 
@@ -271,7 +283,11 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/contact"><Redirect to="/support" /></Route>
             <Route path="/project"><Redirect to="/dashboard" /></Route>
-            <Route path="/deploy"><Redirect to="/docs" /></Route>
+            <Route path="/deploy">
+              <Suspense fallback={<LazyFallback />}>
+                <ProtectedRoute component={DeployPage} />
+              </Suspense>
+            </Route>
             <Route path="/changelog" component={ChangelogPage} />
             <Route path="/product" component={ProductPage} />
             <Route path="/solutions" component={SolutionsPage} />
@@ -421,6 +437,21 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/super-admin">
               <ProtectedRoute component={SuperAdminPage} />
+            </Route>
+            <Route path="/plan">
+              <Suspense fallback={<LazyFallback />}>
+                <ProtectedRoute component={PlanModePage} />
+              </Suspense>
+            </Route>
+            <Route path="/visual-edit">
+              <Suspense fallback={<LazyFallback />}>
+                <ProtectedRoute component={VisualEditPage} />
+              </Suspense>
+            </Route>
+            <Route path="/collaborate">
+              <Suspense fallback={<LazyFallback />}>
+                <ProtectedRoute component={CollaboratePage} />
+              </Suspense>
             </Route>
             <Route path="/bounties" component={BountiesPage} />
             <Route path="/bounties/:id" component={BountiesPage} />

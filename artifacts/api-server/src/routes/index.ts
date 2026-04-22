@@ -308,6 +308,7 @@ import creditRolloverRouter from "./credit-rollover";
 import scimRouter from "./scim";
 import designTemplatesRouter from "./design-templates";
 import aiBenchmarkRouter from "./ai-benchmark";
+import differentiatorsRouter from "./differentiators";
 
 const router: IRouter = Router();
 
@@ -622,5 +623,6 @@ router.use(agentChatRouter);
 router.use(mobileRouter);
 router.use(buildhubRouter);
 router.use(bountiesRouter);
+router.use("/differentiators", differentiatorsRouter);
 
 export default router;

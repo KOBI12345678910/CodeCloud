@@ -4,10 +4,34 @@ import type { AuthenticatedRequest } from "../types";
 
 type PlanLimits = { free: number; pro: number; team: number };
 
-function createLimiter(windowMs: number, max: number, name: string) {
+interface TierMultiplier {
+  free: number;
+  pro: number;
+  team: number;
+}
+
+const TIER_MULTIPLIERS: TierMultiplier = {
+  free: 1,
+  pro: 2,
+  team: 5,
+};
+
+function getUserPlan(req: Request): keyof TierMultiplier {
+  const user = (req as Record<string, unknown>).user as { plan?: string } | undefined;
+  const plan = user?.plan;
+  if (plan === "pro" || plan === "team") return plan;
+  return "free";
+}
+
+function createLimiter(windowMs: number, baseMax: number, name: string, tiered = false) {
   return rateLimit({
     windowMs,
-    max,
+    max: tiered
+      ? (req: Request) => {
+          const plan = getUserPlan(req);
+          return baseMax * TIER_MULTIPLIERS[plan];
+        }
+      : baseMax,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -15,35 +39,11 @@ function createLimiter(windowMs: number, max: number, name: string) {
       retryAfter: Math.ceil(windowMs / 1000),
     },
     handler: (_req: Request, res: Response) => {
-      console.warn(`[rate-limit] ${name} limit hit from ${_req.ip}`);
+      const plan = getUserPlan(_req);
+      console.warn(`[rate-limit] ${name} limit hit from ${_req.ip} (plan: ${plan})`);
       res.status(429).json({
         error: "Too many requests. Please try again later.",
         retryAfter: Math.ceil(windowMs / 1000),
-      });
-    },
-    validate: { xForwardedForHeader: false },
-  });
-}
-
-function createPlanAwareLimiter(windowMs: number, limits: PlanLimits, name: string) {
-  return rateLimit({
-    windowMs,
-    max: (req: Request) => {
-      const authReq = req as AuthenticatedRequest;
-      const plan = authReq.user?.plan || "free";
-      return limits[plan as keyof PlanLimits] || limits.free;
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-    handler: (req: Request, res: Response) => {
-      const authReq = req as AuthenticatedRequest;
-      const plan = authReq.user?.plan || "free";
-      console.warn(`[rate-limit] ${name} limit hit from ${req.ip} (plan: ${plan})`);
-      res.status(429).json({
-        error: "Too many requests. Please try again later.",
-        retryAfter: Math.ceil(windowMs / 1000),
-        plan,
-        upgradeMessage: plan === "free" ? "Upgrade to Pro or Team for higher limits." : undefined,
       });
     },
     validate: { xForwardedForHeader: false },
@@ -54,14 +54,16 @@ function createPlanAwareLimiter(windowMs: number, limits: PlanLimits, name: stri
   });
 }
 
-export const generalLimiter = createLimiter(60 * 1000, 100, "general");
+export const generalLimiter = createLimiter(60 * 1000, 200, "general", true);
 
 export const authLimiter = createLimiter(60 * 1000, 10, "auth");
 
-export const aiLimiter = createPlanAwareLimiter(60 * 1000, { free: 10, pro: 60, team: 120 }, "ai");
+export const aiLimiter = createLimiter(60 * 1000, 20, "ai", true);
 
-export const uploadLimiter = createPlanAwareLimiter(60 * 1000, { free: 3, pro: 15, team: 30 }, "upload");
+export const uploadLimiter = createLimiter(60 * 1000, 5, "upload", true);
 
-export const deployLimiter = createPlanAwareLimiter(60 * 1000, { free: 2, pro: 10, team: 20 }, "deploy");
+export const deployLimiter = createLimiter(60 * 1000, 3, "deploy", true);
 
-export const apiKeyLimiter = createPlanAwareLimiter(60 * 1000, { free: 30, pro: 100, team: 300 }, "api-key");
+export const billingLimiter = createLimiter(60 * 1000, 5, "billing");
+
+export const apiKeyLimiter = createLimiter(60 * 1000, 30, "api-key", true);

@@ -42,6 +42,7 @@ export const usersTable = pgTable("users", {
   storageUsedBytes: bigint("storage_used_bytes", { mode: "number" }).default(0).notNull(),
   projectCount: integer("project_count").default(0).notNull(),
   failedLoginAttempts: integer("failed_login_attempts").default(0).notNull(),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
   lockedUntil: timestamp("locked_until", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

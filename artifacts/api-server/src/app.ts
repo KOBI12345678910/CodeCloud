@@ -5,11 +5,15 @@ import { CLERK_PROXY_PATH, clerkProxyMiddleware } from "./middlewares/clerkProxy
 import router from "./routes";
 import stripeWebhookRouter from "./routes/stripe-webhook";
 import { logger } from "./lib/logger";
-import { corsMiddleware, helmetMiddleware, requestId, responseTime, noSniff } from "./middlewares/security";
+import { corsMiddleware, helmetMiddleware, requestId, responseTime, noSniff, validateRequiredSecrets } from "./middlewares/security";
 import { requestLogger } from "./middlewares/logging";
 import { generalLimiter } from "./middlewares/rateLimit";
 import { i18nMiddleware } from "./middlewares/i18n";
 import { auditMiddleware } from "./middlewares/auditMiddleware";
+import { requireApiKeyScope } from "./middlewares/apiKeyScope";
+import { enforceOrgPolicies } from "./middlewares/orgPolicy";
+
+validateRequiredSecrets();
 
 const app: Express = express();
 
@@ -55,6 +59,7 @@ app.use(i18nMiddleware);
 
 app.use(clerkMiddleware());
 app.use(auditMiddleware);
+
 
 app.get("/health", (_req, res) => {
   res.json({

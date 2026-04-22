@@ -2,46 +2,35 @@ import { Router, type IRouter } from "express";
 import { requireJwtAuth } from "../middlewares/jwtAuth";
 import type { AuthenticatedRequest } from "../types";
 import {
-  generateTOTPSecret,
-  generateBackupCodes,
-  generateQRCodeDataURL,
-  getUserTwoFactor,
   setupTwoFactor,
+  getTwoFactorStatus,
   enableTwoFactor,
   disableTwoFactor,
-  verifyTOTPToken,
-  consumeBackupCode,
-} from "../services/totp";
-import { getUserSessions, revokeSession, revokeAllUserSessions } from "../services/sessions";
-import { getLoginHistory } from "../services/loginHistory";
+  validateTwoFactorCode,
+  generateBackupCodes,
+} from "../services/two-factor";
+import { listUserSessions, revokeSession, revokeAllSessions } from "../services/session-manager";
+import { getLoginHistory } from "../services/login-history";
 import { logAudit, getClientIp, getUserAgent } from "../services/audit";
 
 const router: IRouter = Router();
 
 router.get("/security/2fa/status", requireJwtAuth, async (req, res): Promise<void> => {
   const { userId } = req as AuthenticatedRequest;
-  const record = await getUserTwoFactor(userId);
-  res.json({
-    enabled: record?.enabled ?? false,
-    verifiedAt: record?.verifiedAt ?? null,
-    hasBackupCodes: record?.backupCodes ? JSON.parse(record.backupCodes).length > 0 : false,
-  });
+  const status = await getTwoFactorStatus(userId);
+  res.json(status);
 });
 
 router.post("/security/2fa/setup", requireJwtAuth, async (req, res): Promise<void> => {
   const { user } = req as AuthenticatedRequest;
 
-  const existing = await getUserTwoFactor(user.id);
-  if (existing?.enabled) {
+  const status = await getTwoFactorStatus(user.id);
+  if (status.enabled) {
     res.status(400).json({ error: "2FA is already enabled. Disable it first to reconfigure." });
     return;
   }
 
-  const { secret, uri } = generateTOTPSecret(user.email);
-  const backupCodes = generateBackupCodes(10);
-  const qrCode = await generateQRCodeDataURL(uri);
-
-  await setupTwoFactor(user.id, secret, backupCodes);
+  const result = await setupTwoFactor(user.id, user.email);
 
   logAudit({
     userId: user.id,
@@ -54,9 +43,9 @@ router.post("/security/2fa/setup", requireJwtAuth, async (req, res): Promise<voi
   });
 
   res.json({
-    qrCode,
-    secret,
-    backupCodes,
+    qrCode: result.qrCode,
+    secret: result.secret,
+    backupCodes: result.backupCodes,
     message: "Scan the QR code with your authenticator app, then verify with a code.",
   });
 });
@@ -70,18 +59,7 @@ router.post("/security/2fa/verify", requireJwtAuth, async (req, res): Promise<vo
     return;
   }
 
-  const record = await getUserTwoFactor(userId);
-  if (!record) {
-    res.status(400).json({ error: "2FA has not been set up. Call setup first." });
-    return;
-  }
-
-  if (record.enabled) {
-    res.status(400).json({ error: "2FA is already enabled." });
-    return;
-  }
-
-  const valid = verifyTOTPToken(record.secret, token);
+  const valid = await validateTwoFactorCode(userId, token);
   if (!valid) {
     res.status(400).json({ error: "Invalid verification code. Please try again." });
     return;
@@ -104,23 +82,22 @@ router.post("/security/2fa/verify", requireJwtAuth, async (req, res): Promise<vo
 
 router.post("/security/2fa/disable", requireJwtAuth, async (req, res): Promise<void> => {
   const { userId } = req as AuthenticatedRequest;
-  const { token, backupCode } = req.body;
+  const { token } = req.body;
 
-  const record = await getUserTwoFactor(userId);
-  if (!record || !record.enabled) {
+  const status = await getTwoFactorStatus(userId);
+  if (!status.enabled) {
     res.status(400).json({ error: "2FA is not enabled." });
     return;
   }
 
-  let verified = false;
-  if (token) {
-    verified = verifyTOTPToken(record.secret, token);
-  } else if (backupCode) {
-    verified = await consumeBackupCode(userId, backupCode);
+  if (!token) {
+    res.status(400).json({ error: "Verification code required to disable 2FA." });
+    return;
   }
 
+  const verified = await validateTwoFactorCode(userId, token);
   if (!verified) {
-    res.status(400).json({ error: "Invalid verification code or backup code." });
+    res.status(400).json({ error: "Invalid verification code." });
     return;
   }
 
@@ -143,20 +120,24 @@ router.post("/security/2fa/regenerate-backup", requireJwtAuth, async (req, res):
   const { userId } = req as AuthenticatedRequest;
   const { token } = req.body;
 
-  const record = await getUserTwoFactor(userId);
-  if (!record || !record.enabled) {
+  const status = await getTwoFactorStatus(userId);
+  if (!status.enabled) {
     res.status(400).json({ error: "2FA must be enabled to regenerate backup codes." });
     return;
   }
 
-  if (!token || !verifyTOTPToken(record.secret, token)) {
+  if (!token) {
     res.status(400).json({ error: "Valid TOTP code required to regenerate backup codes." });
     return;
   }
 
-  const newCodes = generateBackupCodes(10);
-  await setupTwoFactor(userId, record.secret, newCodes);
-  await enableTwoFactor(userId);
+  const valid = await validateTwoFactorCode(userId, token);
+  if (!valid) {
+    res.status(400).json({ error: "Invalid TOTP code." });
+    return;
+  }
+
+  const newCodes = await generateBackupCodes(userId);
 
   logAudit({
     userId,
@@ -173,27 +154,22 @@ router.post("/security/2fa/regenerate-backup", requireJwtAuth, async (req, res):
 
 router.get("/security/sessions", requireJwtAuth, async (req, res): Promise<void> => {
   const { userId } = req as AuthenticatedRequest;
-  const sessions = await getUserSessions(userId);
-
-  res.json({
-    sessions: sessions.map((s) => ({
-      id: s.id,
-      deviceLabel: s.deviceLabel,
-      ipAddress: s.ipAddress,
-      city: s.city,
-      country: s.country,
-      lastActiveAt: s.lastActiveAt,
-      createdAt: s.createdAt,
-      isCurrent: s.isCurrent,
-    })),
-  });
+  const sessions = await listUserSessions(userId);
+  res.json({ sessions });
 });
 
 router.delete("/security/sessions/:id", requireJwtAuth, async (req, res): Promise<void> => {
   const { userId } = req as AuthenticatedRequest;
   const { id } = req.params;
 
-  await revokeSession(id, userId);
+  const sessions = await listUserSessions(userId);
+  const session = sessions.find(s => s.id === id);
+  if (!session) {
+    res.status(404).json({ error: "Session not found" });
+    return;
+  }
+
+  await revokeSession(id);
 
   logAudit({
     userId,
@@ -210,9 +186,9 @@ router.delete("/security/sessions/:id", requireJwtAuth, async (req, res): Promis
 
 router.post("/security/sessions/revoke-all", requireJwtAuth, async (req, res): Promise<void> => {
   const { userId } = req as AuthenticatedRequest;
-  const { exceptCurrent } = req.body;
+  const { currentSessionId } = req.body;
 
-  await revokeAllUserSessions(userId, exceptCurrent ? req.body.currentSessionId : undefined);
+  await revokeAllSessions(userId, currentSessionId);
 
   logAudit({
     userId,
@@ -238,16 +214,16 @@ router.get("/security/login-history", requireJwtAuth, async (req, res): Promise<
 router.get("/security/overview", requireJwtAuth, async (req, res): Promise<void> => {
   const { user, userId } = req as AuthenticatedRequest;
 
-  const [twoFa, sessions, recentLogins] = await Promise.all([
-    getUserTwoFactor(userId),
-    getUserSessions(userId),
+  const [twoFaStatus, sessions, recentLogins] = await Promise.all([
+    getTwoFactorStatus(userId),
+    listUserSessions(userId),
     getLoginHistory(userId, 5),
   ]);
 
   const failedRecentLogins = recentLogins.filter((l) => !l.success).length;
 
   res.json({
-    twoFactorEnabled: twoFa?.enabled ?? false,
+    twoFactorEnabled: twoFaStatus.enabled,
     activeSessions: sessions.length,
     recentFailedLogins: failedRecentLogins,
     authProvider: user.authProvider,

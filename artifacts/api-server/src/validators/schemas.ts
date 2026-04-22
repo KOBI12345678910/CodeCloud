@@ -19,6 +19,7 @@ export const RegisterSchema = z.object({
 export const LoginSchema = z.object({
   email: z.string().email("Invalid email format"),
   password: z.string().min(1, "Password is required"),
+  twoFactorCode: z.string().optional(),
 });
 
 export const RefreshTokenSchema = z.object({

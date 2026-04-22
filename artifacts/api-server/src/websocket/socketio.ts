@@ -4,6 +4,45 @@ import { verifyToken } from "@clerk/express";
 import { db, usersTable, collaboratorsTable, projectsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { spawn } from "node:child_process";
+import * as path from "node:path";
+import * as fs from "node:fs";
+
+function execShell(command: string, session: TerminalSession): Promise<string> {
+  return new Promise((resolve) => {
+    const trimmed = command.trim();
+    if (!trimmed) return resolve("");
+    const cdMatch = trimmed.match(/^cd(?:\s+(.+))?$/);
+    if (cdMatch) {
+      const target = (cdMatch[1] || session.env.HOME || "/").replace(/^~/, session.env.HOME || "/");
+      const next = path.resolve(session.cwd, target);
+      try {
+        const st = fs.statSync(next);
+        if (!st.isDirectory()) return resolve(`cd: not a directory: ${target}\r\n`);
+        session.cwd = next;
+        return resolve("");
+      } catch {
+        return resolve(`cd: no such file or directory: ${target}\r\n`);
+      }
+    }
+    if (trimmed === "clear") return resolve("\x1b[2J\x1b[H");
+    let cwd = session.cwd;
+    try { fs.accessSync(cwd); } catch { cwd = process.cwd(); session.cwd = cwd; }
+    const child = spawn("bash", ["-lc", trimmed], {
+      cwd,
+      env: { ...process.env, ...session.env, TERM: "xterm-256color" },
+      timeout: 30_000,
+    });
+    let buf = "";
+    child.stdout.on("data", (d) => { buf += d.toString().replace(/\n/g, "\r\n"); });
+    child.stderr.on("data", (d) => { buf += d.toString().replace(/\n/g, "\r\n"); });
+    child.on("error", (err) => { resolve(`${buf}bash: ${err.message}\r\n`); });
+    child.on("close", (code) => {
+      const tail = code && code !== 0 ? `\x1b[31m[exit ${code}]\x1b[0m\r\n` : "";
+      resolve(buf + tail);
+    });
+  });
+}
 
 interface AuthenticatedSocketData {
   userId: string;
@@ -446,7 +485,7 @@ function initTerminalNamespace(server: SocketIOServer): void {
       socket.emit("scrollback", { sessionId: data.sessionId, lines: session.scrollback });
     });
 
-    socket.on("input", (data: { sessionId: string; data: string }) => {
+    socket.on("input", async (data: { sessionId: string; data: string }) => {
       const session = terminalSessions.get(data.sessionId);
       if (!session || !session.participants.has(socket.id)) return;
 
@@ -458,7 +497,7 @@ function initTerminalNamespace(server: SocketIOServer): void {
           appendScrollback(session, echo);
           terminalNs.to(`session:${data.sessionId}`).emit("output", { sessionId: data.sessionId, data: echo });
 
-          const output = simulateCommand(command, session);
+          const output = await execShell(command, session);
           if (output) {
             appendScrollback(session, output);
             terminalNs.to(`session:${data.sessionId}`).emit("output", { sessionId: data.sessionId, data: output });

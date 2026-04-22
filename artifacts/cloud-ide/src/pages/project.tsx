@@ -308,6 +308,64 @@ console.log("CodeCloud demo ready");
   ];
 }
 
+function sampleStorageKey(projectId: string): string {
+  return `cc:samplefiles:${projectId}`;
+}
+
+function loadSampleOverrides(projectId: string): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(sampleStorageKey(projectId));
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function saveSampleOverride(projectId: string, fileId: string, content: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const all = loadSampleOverrides(projectId);
+    all[fileId] = content;
+    window.localStorage.setItem(sampleStorageKey(projectId), JSON.stringify(all));
+  } catch {}
+}
+
+function getSampleFiles(projectId: string): FileNode[] {
+  const base = buildSampleFiles(projectId);
+  const overrides = loadSampleOverrides(projectId);
+  return base.map((f) => overrides[f.id] != null ? { ...f, content: overrides[f.id], sizeBytes: overrides[f.id].length } : f);
+}
+
+function buildPreviewDoc(files: Array<{ name: string; path: string; content?: string | null; isDirectory: boolean }>): string {
+  if (!files || files.length === 0) return "";
+  const byName = new Map<string, string>();
+  for (const f of files) {
+    if (f.isDirectory) continue;
+    const key = (f.path || f.name).replace(/^\.?\//, "");
+    byName.set(key, f.content || "");
+    byName.set(f.name, f.content || "");
+  }
+  const entry =
+    byName.get("index.html") ||
+    Array.from(byName.entries()).find(([k]) => k.toLowerCase().endsWith(".html"))?.[1];
+  if (!entry) {
+    const jsFile = Array.from(byName.entries()).find(([k]) => k.toLowerCase().endsWith(".js"))?.[1];
+    if (jsFile) {
+      return `<!doctype html><html><head><meta charset="utf-8"><title>Preview</title></head><body><pre id="out" style="font:13px ui-monospace,monospace;padding:1rem;color:#111;background:#fff;white-space:pre-wrap;"></pre><script>(function(){var out=document.getElementById('out');var orig=console.log;console.log=function(){var s=Array.prototype.map.call(arguments,function(x){try{return typeof x==='string'?x:JSON.stringify(x);}catch(e){return String(x);}}).join(' ');out.textContent+=s+'\\n';orig.apply(console,arguments);};window.addEventListener('error',function(e){out.textContent+='[error] '+e.message+'\\n';});})();<\/script><script>${jsFile}<\/script></body></html>`;
+    }
+    return "";
+  }
+  let html = entry;
+  html = html.replace(/<link\b[^>]*?\bhref=["']([^"']+\.css)["'][^>]*>/gi, (_m, href) => {
+    const css = byName.get(href.replace(/^\.?\//, "")) || byName.get(href);
+    return css != null ? `<style>\n${css}\n</style>` : _m;
+  });
+  html = html.replace(/<script\b([^>]*?)\bsrc=["']([^"']+\.js)["']([^>]*)><\/script>/gi, (_m, pre, src, post) => {
+    const js = byName.get(src.replace(/^\.?\//, "")) || byName.get(src);
+    return js != null ? `<script${pre}${post}>\n${js}\n</script>` : _m;
+  });
+  return html;
+}
+
 interface FileNode {
   id: string;
   projectId: string;
@@ -625,7 +683,7 @@ function EditorPaneView({
     },
   });
   const activeFileData = apiActiveFileData ?? (selectedFileId && String(selectedFileId).startsWith("sample-")
-    ? (buildSampleFiles(projectId).find((f) => f.id === selectedFileId) ?? null)
+    ? (getSampleFiles(projectId).find((f) => f.id === selectedFileId) ?? null)
     : null);
 
   const handleEditorChange = useCallback(
@@ -837,7 +895,8 @@ export default function ProjectPage({ id }: { id: string }) {
   const { data: apiFiles, error: filesError } = useListFiles(id, {
     query: { queryKey: getListFilesQueryKey(id), retry: false },
   });
-  const sampleFiles = useMemo<FileNode[]>(() => buildSampleFiles(id), [id]);
+  const [sampleVersion, setSampleVersion] = useState(0);
+  const sampleFiles = useMemo<FileNode[]>(() => getSampleFiles(id), [id, sampleVersion]);
   const files = (apiFiles && apiFiles.length > 0) ? apiFiles : sampleFiles;
   const { data: collaborators } = useListCollaborators(id, {
     query: { queryKey: ["collaborators", id] },
@@ -851,6 +910,7 @@ export default function ProjectPage({ id }: { id: string }) {
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const [modifiedFiles, setModifiedFiles] = useState<Set<string>>(new Set());
   const [containerRunning, setContainerRunning] = useState(false);
+  const [previewSrcDoc, setPreviewSrcDoc] = useState<string | undefined>(undefined);
   const [gpuToggling, setGpuToggling] = useState(false);
   const [previewSize, setPreviewSize] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [creatingFile, setCreatingFile] = useState(false);
@@ -1126,7 +1186,7 @@ export default function ProjectPage({ id }: { id: string }) {
     }
   );
   const activeFileData = apiActiveFileData2 ?? (selectedFileId && String(selectedFileId).startsWith("sample-")
-    ? (buildSampleFiles(id).find((f) => f.id === selectedFileId) ?? null)
+    ? (getSampleFiles(id).find((f) => f.id === selectedFileId) ?? null)
     : null);
 
   const createFile = useCreateFile();
@@ -1343,6 +1403,15 @@ export default function ProjectPage({ id }: { id: string }) {
     const editor = editorRef.current;
     if (!editor) return;
     const content = editor.getValue();
+
+    if (String(fileId).startsWith("sample-")) {
+      saveSampleOverride(id, fileId, content);
+      setModifiedFiles((prev) => { const next = new Set(prev); next.delete(fileId); return next; });
+      setSampleVersion((v) => v + 1);
+      queryClient.invalidateQueries({ queryKey: getGetFileQueryKey(id, fileId) });
+      toast({ title: "File saved" });
+      return;
+    }
 
     updateFile.mutate(
       { projectId: id, fileId, data: { content } },
@@ -1570,11 +1639,19 @@ export default function ProjectPage({ id }: { id: string }) {
   }, [id, project?.gpuEnabled, gpuToggling, queryClient, toast]);
 
   const handleRun = () => {
+    try {
+      const html = buildPreviewDoc(files as FileNode[]);
+      setPreviewSrcDoc(html);
+    } catch {
+      setPreviewSrcDoc(undefined);
+    }
     setContainerRunning(true);
+    toast({ title: "App running", description: "Preview is live in the right pane" });
   };
 
   const handleStop = () => {
     setContainerRunning(false);
+    setPreviewSrcDoc(undefined);
   };
 
   const handleDeploy = () => {
@@ -2186,6 +2263,7 @@ export default function ProjectPage({ id }: { id: string }) {
             projectName={project?.name}
             deployedUrl={project?.deployedUrl ?? undefined}
             containerRunning={containerRunning}
+            srcDoc={previewSrcDoc}
           />
         </Panel>
       </PanelGroup>

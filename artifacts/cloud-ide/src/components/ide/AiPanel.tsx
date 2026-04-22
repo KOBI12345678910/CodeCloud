@@ -145,6 +145,64 @@ export default function AiPanel({
     setMessages(prev => [...prev, { role: "user", content: userText }]);
 
     try {
+      if (mode === "chat") {
+        setMessages(prev => [...prev, { role: "assistant", content: "" }]);
+        const res = await fetch(`${apiBase}/ai/${modeDef.endpoint}?stream=1`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+          credentials: "include",
+          body: JSON.stringify(body),
+        });
+        if (!res.ok || !res.body) {
+          const errBody = await res.json().catch(() => ({}));
+          if (res.status === 429) setError(`Daily limit reached (${errBody.used}/${errBody.limit}).`);
+          else setError(errBody.error || `Request failed (${res.status})`);
+          setMessages(prev => prev.slice(0, -2));
+          return;
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let acc = "";
+        let convId: string | undefined;
+        outer: while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split(/\n\n/);
+          buffer = events.pop() || "";
+          for (const ev of events) {
+            const lines = ev.split("\n");
+            let eventType = "message";
+            let dataStr = "";
+            for (const ln of lines) {
+              if (ln.startsWith("event:")) eventType = ln.slice(6).trim();
+              else if (ln.startsWith("data:")) dataStr += ln.slice(5).trim();
+            }
+            if (!dataStr) continue;
+            try {
+              const parsed = JSON.parse(dataStr);
+              if (eventType === "delta" && typeof parsed.text === "string") {
+                acc += parsed.text;
+                setMessages(prev => {
+                  const copy = [...prev];
+                  copy[copy.length - 1] = { role: "assistant", content: acc };
+                  return copy;
+                });
+              } else if (eventType === "done") {
+                if (parsed.conversationId) convId = parsed.conversationId;
+                break outer;
+              } else if (eventType === "error") {
+                setError(parsed.error || "Stream error");
+                break outer;
+              }
+            } catch {}
+          }
+        }
+        if (convId) { setActiveConvId(convId); fetchConversations(); }
+        fetchUsage();
+        return;
+      }
       const res = await fetch(`${apiBase}/ai/${modeDef.endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

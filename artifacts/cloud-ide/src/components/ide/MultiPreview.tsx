@@ -20,6 +20,7 @@ interface Props {
   projectName?: string;
   deployedUrl?: string;
   containerRunning: boolean;
+  srcDoc?: string;
 }
 
 const VIEWPORT_SIZES: Record<ViewportSize, { width: string; height: string; label: string }> = {
@@ -42,7 +43,7 @@ function createTab(port = 3000, label?: string): PreviewTab {
   };
 }
 
-export function MultiPreview({ projectName, deployedUrl, containerRunning }: Props) {
+export function MultiPreview({ projectName, deployedUrl, containerRunning, srcDoc }: Props) {
   const [tabs, setTabs] = useState<PreviewTab[]>([createTab(3000, "Main")]);
   const [activeTabId, setActiveTabId] = useState(tabs[0].id);
   const [editingUrl, setEditingUrl] = useState<string | null>(null);
@@ -262,11 +263,20 @@ export function MultiPreview({ projectName, deployedUrl, containerRunning }: Pro
             maxHeight: "100%",
           }}
         >
-          {containerRunning ? (
+          {containerRunning && srcDoc ? (
+            <iframe
+              ref={el => { iframeRefs.current[activeTabId] = el; }}
+              srcDoc={srcDoc}
+              title="Live Preview"
+              sandbox="allow-scripts allow-forms allow-popups allow-modals"
+              className="w-full h-full bg-white border-0"
+              data-testid="preview-iframe"
+            />
+          ) : containerRunning ? (
             <div className="w-full h-full flex items-center justify-center">
               <div className="text-center">
                 <h2 className="text-lg font-semibold text-foreground">Live Preview</h2>
-                <p className="text-sm text-muted-foreground mt-1">Your app is running</p>
+                <p className="text-sm text-muted-foreground mt-1">No HTML entry file found</p>
               </div>
             </div>
           ) : (

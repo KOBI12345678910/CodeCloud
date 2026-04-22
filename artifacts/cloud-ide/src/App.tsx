@@ -83,6 +83,16 @@ import ObservabilityPage from "@/pages/observability";
 import SettingsBackupsPage from "@/pages/settings-backups";
 import CdnConfigPage from "@/pages/cdn-config";
 import QueueDashboardPage from "@/pages/queue-dashboard";
+import GitHubSyncPage from "@/pages/github-sync";
+import ExtensionsPage from "@/pages/extensions";
+import VersionHistoryPage from "@/pages/version-history";
+import CommunityPage from "@/pages/community";
+import DebuggerPage from "@/pages/debugger";
+import PackageManagerPage from "@/pages/package-manager";
+import ThemesPage from "@/pages/themes";
+import ComponentLibraryPage from "@/pages/component-library";
+import FigmaImportPage from "@/pages/figma-import";
+import AiCodeReviewPage from "@/pages/ai-code-review";
 const PlanModePage = lazy(() => import("@/pages/plan"));
 const VisualEditPage = lazy(() => import("@/pages/visual-edit"));
 const DeployPage = lazy(() => import("@/pages/deploy"));
@@ -480,6 +490,34 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/admin/compliance">
               <AdminRoute component={AdminCompliancePage} />
+            </Route>
+            <Route path="/github-sync">
+              <ProtectedRoute component={GitHubSyncPage} />
+            </Route>
+            <Route path="/extensions">
+              <ProtectedRoute component={ExtensionsPage} />
+            </Route>
+            <Route path="/version-history">
+              <ProtectedRoute component={VersionHistoryPage} />
+            </Route>
+            <Route path="/community" component={CommunityPage} />
+            <Route path="/debugger">
+              <ProtectedRoute component={DebuggerPage} />
+            </Route>
+            <Route path="/packages">
+              <ProtectedRoute component={PackageManagerPage} />
+            </Route>
+            <Route path="/themes">
+              <ProtectedRoute component={ThemesPage} />
+            </Route>
+            <Route path="/components">
+              <ProtectedRoute component={ComponentLibraryPage} />
+            </Route>
+            <Route path="/figma">
+              <ProtectedRoute component={FigmaImportPage} />
+            </Route>
+            <Route path="/ai-review">
+              <ProtectedRoute component={AiCodeReviewPage} />
             </Route>
             <Route path="/about" component={AboutPage} />
             <Route path="/terms" component={TermsPage} />

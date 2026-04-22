@@ -331,6 +331,9 @@ import dpaRouter from "./dpa";
 import complianceDashboardRouter from "./compliance-dashboard";
 import observabilityRouter from "./observability";
 import queueDashboardRouter from "./queue-dashboard";
+import githubSyncRouter from "./github-sync";
+import extensionsMarketplaceRouter from "./extensions-marketplace";
+import versionHistoryRouter from "./version-history";
 import { authLimiter, aiLimiter, uploadLimiter, deployLimiter, billingLimiter } from "../middlewares/rateLimit";
 import { requireApiKeyScope } from "../middlewares/apiKeyScope";
 
@@ -670,5 +673,8 @@ router.use(dpaRouter);
 router.use(complianceDashboardRouter);
 router.use(observabilityRouter);
 router.use(queueDashboardRouter);
+router.use(githubSyncRouter);
+router.use(extensionsMarketplaceRouter);
+router.use(versionHistoryRouter);
 
 export default router;

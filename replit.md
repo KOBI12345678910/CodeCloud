@@ -2,7 +2,7 @@
 
 ## Overview
 
-CodeCloud is a browser-based cloud IDE platform designed to provide a comprehensive development environment. It enables users to create, edit, run, and deploy code directly from their web browser, supporting multiple programming languages and frameworks through a template-driven project creation system. The platform aims to offer a seamless, collaborative, and efficient cloud-native development experience, featuring a robust code editor, file management, an integrated terminal, live previews, and one-click deployment.
+CodeCloud is a browser-based cloud IDE platform providing a comprehensive development environment for creating, editing, running, and deploying code directly from the web. It supports multiple programming languages and frameworks through template-driven project creation, aiming for a seamless, collaborative, and efficient cloud-native development experience. Key capabilities include a robust code editor, file management, integrated terminal, live previews, and one-click deployment. The platform targets market potential by offering a unified development experience comparable to leading IDEs, with ambitions for extensive AI integration, enterprise-grade security, and a flexible billing ecosystem.
 
 ## User Preferences
 
@@ -10,135 +10,57 @@ I prefer concise and direct communication. When making changes, prioritize funct
 
 ## System Architecture
 
-The project is structured as a pnpm monorepo using TypeScript, with distinct artifacts for the API server, client-side IDE, and shared libraries.
+The project is a pnpm monorepo using TypeScript, structured with distinct artifacts for the API server, client-side IDE, and shared libraries.
 
 **UI/UX Decisions:**
-The frontend uses React 19, Vite, and Tailwind CSS v4, providing a responsive and modern interface. Visual parity with Replit/Lovable (2026): prompt-first landing page ("What will you build?"), 7 category icons (Website/Mobile/Design/Slides/Animation/Backend/AI Agent), example prompts, client logos, animated stats, 4-tier pricing (Starter/Core/Pro/Enterprise) with Monthly/Yearly toggle. All 10 feature pages use FeaturePageLayout with MarketingHeader/Footer + radial gradient hero. The IDE includes a Monaco editor, resizable panels, a customizable dark theme, multi-file search, resource monitoring, a fully-featured terminal (xterm.js), collaborative cursors, file breadcrumbs, split-editor view, image and Markdown previews, and integrated Git and environment variable editors. Layout persistence is managed per project using local storage.
+The frontend utilizes React 19, Vite, and Tailwind CSS v4 for a responsive and modern interface. Design principles are inspired by Replit/Lovable (2026), featuring a prompt-first landing page, categorized project creation, example prompts, and animated statistics. The platform includes a 4-tier pricing model with monthly/yearly toggles. The IDE incorporates a Monaco editor, resizable panels, a customizable dark theme, multi-file search, resource monitoring, a fully-featured xterm.js terminal, collaborative cursors, split-editor view, image and Markdown previews, and integrated Git and environment variable editors. Layout persistence is managed per project.
 
 **Technical Implementations:**
-- **API Server:** An Express 5 REST API manages all backend operations (322 route files).
-- **Database:** PostgreSQL is used with Drizzle ORM (62 schema files).
-- **Authentication:** Clerk handles user management, supplemented by JWT for API client authentication. OAuth integrations for Google and GitHub are supported. Custom `requireAuth` middleware integrates Clerk sessions with internal user profiles. 2FA/TOTP with hashed backup codes (`otpauth`). SAML/SSO with SP metadata + ACS endpoints.
-- **Validation:** Zod is used extensively for API request body validation.
-- **API Codegen:** Orval generates React Query hooks and Zod schemas from an OpenAPI specification, ensuring type safety and consistency between frontend and backend.
-- **WebSocket:** A dedicated WebSocket server (`/ws`) supports real-time features like terminal interaction, collaboration, notifications, and deployment logs, utilizing Socket.IO and Yjs CRDT. Features connection pooling, heartbeat mechanisms, and channel-based pub/sub.
-- **Security:** Helmet, CORS, and `express-rate-limit` middlewares. Plan-tiered rate limits (free/pro=2x/team=5x). AES-256-GCM encryption for secrets. Boot-time secret validation (fail-fast in production). Active session tracking with device detection, login history, auto-audit middleware (with redacted body logging), brute-force lockout, API key scoping (read/write/admin), IP allowlisting, and org-level RBAC policies. Security Center UI at `/security` with 4 tabs.
-- **Compliance & Privacy:** GDPR DSAR (data export/deletion with 30-day grace), granular cookie consent management with DNT detection, data residency (US/EU/APAC per org), data retention policies (auto-archive/delete), DPA generation for enterprise, compliance admin dashboard with DSAR queue/consent rates/region distribution.
-- **AI Gateway:** 38 AI models from 25 providers (OpenAI, Anthropic, Google, xAI, DeepSeek, Meta, Mistral, Qwen, Cohere, Ollama, Perplexity, AI21, Together, Fireworks, Cerebras, Inflection, Zhipu, MiniMax, Moonshot, Yi, SambaNova, NVIDIA, Amazon, Azure, Baichuan). Smart AI Router auto-selects optimal model by task/cost/speed. AI Benchmark system. BYOK support. AI chat conversations within projects.
-- **Credits & Billing:** Stripe integration, credit rollover (pro: 100, team: 300), on-demand top-ups, metered billing, usage tracking. **Admin Pricing Engine** (`/admin/pricing`): full control over all service prices, margins (per-service + global), currency markup, revenue simulator with ARR forecasting. **Service Marketplace** (`/service-marketplace`): granular per-service billing for domains, cloud, email, security, database, support — users subscribe individually. **Catalog API** (`/catalog/services`): public service catalog (non-admin). Server-side price enforcement (no client-supplied pricing). 11 payment methods supported (card, PayPal, crypto, Apple/Google Pay, wire, invoice).
-- **Universal AI Model Connector** (`/model-connector`): Connect any AI model from any provider worldwide (25+ providers: OpenAI, Anthropic, Google, xAI, DeepSeek, Meta, Mistral, Cohere, Perplexity, Together, Fireworks, Cerebras, Groq, SambaNova, NVIDIA NIM, Azure OpenAI, AWS Bedrock, AI21, Inflection, Zhipu GLM, MiniMax, Moonshot Kimi, Baichuan, Ollama self-hosted, custom OpenAI-compatible). Admin sets per-model pricing margins, rate limits, daily caps. Health check & latency monitoring per connector.
-- **Super Admin Control Center** (`/super-admin`): Unified dashboard with links to all 12 admin control panels (Pricing, AI Models, Marketplace, Users, Revenue, Security, Deployment, Database, Monitoring, RBAC, White-Label, Compliance).
-- **SCIM v2:** Enterprise SSO user provisioning (Users CRUD, ServiceProviderConfig, ResourceTypes, Schemas).
-- **Design Templates:** 18 ready-to-deploy templates across 12 categories (SaaS, e-commerce, AI, mobile, etc.)
-- **Design System:** Full design tokens (colors, typography, spacing, radii, shadows, animations), export to CSS/Tailwind/SCSS/Figma.
-- **Real-Time Collaboration:** Socket.IO and Yjs CRDT for multiplayer editing with presence tracking, terminal sharing, and follow mode. Frontend hooks: `useSocketIO` (connection mgmt), `useYjsCollaboration` (CRDT editing). `PresenceBar` component shows live collaborators in IDE header.
-- **Container/Deployment:** Container engine (simulated UI-only terminal/status), GPU support, blue-green deployments, canary analysis, geo-routing, CDN cache, multi-region, edge deploy, warm pools, autoscale (CPU/Memory/RPS), static site deployments.
-- **BaaS:** Backend-as-a-Service with database, auth, storage, edge functions, realtime, webhooks.
-- **MCP Integration:** 5 built-in MCP servers (Filesystem, Database, Git, Browser, Terminal) + custom server support.
-- **White-Label:** Enterprise custom branding (logo, colors, domain, emails, SEO).
-- **Publishing Controls:** Approval workflows, environments (production/staging/preview), rollback, pre-publish checks.
-- **Sharing Controls:** Public/private/internal/unlisted visibility, share links, embed codes.
-- **Knowledge Base:** Custom AI context documents, URL import, token-tracked (100K limit).
-- **RBAC:** 5 system roles + custom role creation with granular permission matrix.
-- **Internal Publish:** Private deployments for team/org only with IP restrictions and password protection.
-- **DevOps:** CI/CD pipeline, build cache, coverage, linting, vulnerability scanning, auto-rollback. Automated testing on deploy: configurable per-project test commands run before deployment, blocking deployment if tests fail.
-- **i18n:** 134+ language support with RTL.
-- **Middleware Stack:** Includes `requestId` for correlation IDs, `requestLogger` for structured logging, `responseTime` header, `noSniff` for content security, and `auditMiddleware`.
-- **Infrastructure Services:** Redis cache (in-memory simulation), database backup management (PITR, snapshots), CDN configuration (rules, purge, stats), observability dashboard (latency histograms, throughput, error rates), BullMQ-like queue persistence (DLQ, retry, progress tracking), graceful shutdown (SIGTERM drain, Redis disconnect), enhanced health monitoring (dependency checks: DB, Redis, AI providers + system metrics).
-- **Background Jobs:** Asynchronous tasks like container cleanup, metrics collection, email processing, token cleanup, and deployment health checks.
-- **Authorization:** `requireProjectAccess(role)` middleware enforces access control based on user roles and project ownership/collaboration, including IDOR prevention.
-- **Issue Tracker:** Project-level issue tracking with status (open/in-progress/closed), labels (bug/feature/improvement), assignee from collaborators, code references (file+line), and threaded comments. API at `/projects/:id/issues`.
-- **Project & Organization Management:** Create, list, fork, export, and delete projects. Manage files, collaborators, deployments, and secrets per project. Create and manage organizations, members, invites, and shared secrets.
-- **IDE Tools (Tasks 251-281):** Docker image builder/analyzer, rate limit dashboard, performance auditing (Lighthouse), dependency license checker (SBOM), collaborative TODO list, traffic analytics dashboard, command exec history (with export), coding time tracking & streaks, badge generator, environment comparison (dev/staging/prod), container networking dashboard, multi-region deployment selector, cost optimizer, container debug inspector (processes/fs/network/env/resources), layout presets, regex code search, deploy monitoring alerts, automated security patching, image vulnerability scanner, project embed widget configurator, smart terminal with autocomplete, project documentation wiki (versioned pages), platform status/incidents page, RSS changelog feeds, social sharing cards (OG meta), template versioning, auto-documentation from TypeScript types.
-- **Platform Services (288+ services):** Includes container engine, GitHub integration, notification system, explore/social, team management, activity feed, usage limits, webhooks, user onboarding, feature flags, support tickets, cloud functions, scheduled tasks, edge config, database backups, log streaming, API keys, search index, email service, SSO providers, IP filtering, session management, GDPR compliance, deployment strategies (blue-green/canary/rolling), platform metrics, GraphQL API, CLI tools, project archival, object storage, service mesh, learning paths, hackathons, workspace-sync, code-review-ai, container-snapshots, live-share, project-import, project-export, container-logs, user-preferences, build-cache, custom-runners, project-templates-store, debug-sessions, project-variables, resource-limits, project-badges, deploy-rollback, project-forks, code-formatting, project-milestones, user-activity-log.
-
-## Stats
-- 327 API route files
-- 72 frontend pages
-- 64 DB schema files
-
-## Key Routes (Recent Additions)
-- `/api/health` — Enhanced health endpoint (DB, Redis, AI provider checks, system metrics)
-- `/api/observability/*` — Observability metrics, latency histograms, AI gateway stats
-- `/api/queues/*` — Queue dashboard (jobs, DLQ, retry, purge)
-- `/api/backups/*` — Database backup management (PITR, snapshots, restore)
-- `/api/projects/:id/cdn/*` — CDN config, cache rules, purge, stats
-- `/api/autoscale/:projectId/*` — Autoscale policies (min/max replicas, strategies, cooldowns)
-- `/api/static-deploy/:projectId/*` — Static site deployments (10 frameworks, CDN)
-- `/api/baas/:projectId/*` — Backend-as-a-Service (DB, Auth, Storage, Functions)
-- `/api/mcp/:projectId/*` — MCP tool integration (servers, tools, execution)
-- `/api/white-label/:orgId/*` — White-label branding & domain
-- `/api/internal-publish/:projectId/*` — Internal/private deployments
-- `/api/design-tokens/:projectId/*` — Design system tokens & export
-- `/api/sharing/:projectId/*` — Visibility & sharing controls
-- `/api/publishing/:projectId/*` — Publishing controls & approval workflow
-- `/api/knowledge/:projectId/*` — Knowledge base documents & context
-- `/api/ai/models` — 38 AI models from 23 providers
-- `/api/ai/smart-route` — Smart AI routing
-- `/api/ai/benchmark` — AI model benchmark leaderboard
-- `/api/credits/*` — Credit balance, topup, rollover, history
-- `/api/scim/v2/*` — SCIM v2 user provisioning
-- `/api/design-templates` — Template marketplace
-- `/api/security/*` — 2FA, sessions, login history
-- `/api/privacy/*` — DSAR export/deletion, consent management
-- `/api/data-residency/*` — Organization data region management
-- `/api/data-retention/*` — Data retention policies
-- `/api/privacy/dpa/generate` — DPA document generation
-- `/api/admin/compliance/*` — Compliance dashboard & metrics
-- `/projects/:id/issues` — Issue tracking API
-
-## Frontend Pages (Recent Additions)
-- `/autoscale` — Autoscale configuration UI
-- `/static-deploy` — Static site deployments UI
-- `/baas` — Backend-as-a-Service dashboard
-- `/mcp-tools` — MCP server & tool management
-- `/white-label` — Enterprise branding configuration
-- `/rbac` — Role & permission management
-- `/design-tokens` — Design system tokens editor
-- `/sharing` — Visibility & sharing controls
-- `/publishing` — Publishing controls & approval workflow
-- `/knowledge-base` — Knowledge base document management
-- `/ai-models` — AI Model Marketplace with search, filter, compare, smart recommend
-- `/differentiators` — 20 differentiator features
-- `/security` — Security Center (2FA, sessions, login history)
-- `/pricing` — 4-tier pricing page
-- `/billing` — Billing dashboard
-- `/ai-chat` — AI chat conversations
-- `/integrations` — Marketplace for third-party integrations
-- `/wiki` — Project documentation wiki
-- `/status` — Platform status/incidents page
-- `/changelog` — Platform changelog feed
-- `/compliance` — Compliance dashboard
-- `/onboarding` — User onboarding flow
-- `/admin` — Admin panel for platform management
-- `/explore` — Social exploration feed
-- `/teams` — Team management
-- `/domains` — Custom domain management
-- `/webhooks` — Webhook management
-- `/support` — Support ticket system
-- `/snippets` — Code snippets library
-- `/error-dashboard` — Platform error monitoring
-- `/funnel-dashboard` — User funnel analytics
-- `/revenue-analytics` — Platform revenue tracking
-- `/image-registry` — Container image registry
-- `/code-metrics` — Code quality and metrics
-- `/container-health` — Container health monitoring (resources, dependencies, time-series)
-- `/admin/observability` — Platform observability dashboard
-- `/admin/queues` — Queue management dashboard
-- `/settings/backups` — Database backup management
-- `/cdn-config` — CDN configuration
-- `/live-session` — Real-time collaboration sessions
-- `/developer-settings` — Developer API and app settings
-- `/template-store` — Project template marketplace
-- `/error-tracking` — Per-project error tracking
-- `/settings/privacy` — Privacy settings (DSAR, consent, data export/deletion)
-- `/admin/compliance` — Compliance admin dashboard
-
-## DB Schemas Added (Recent)
-- `db_sync_logs`, `todos`, `exec_history`, `wiki_pages`, `wiki_page_versions`, `coding_stats`, `coding_streaks`, `incidents`, `incident_updates`, `milestones`, `milestone_tasks`, `issues` (with JSONB code references).
-- `two-factor-secrets`, `sso-configurations`, `user-sessions`, `org-policies`, `login-history`, `ip-allowlist`.
-- `dsar-requests`, `user-consents`, `data-retention-policies` (GDPR compliance), `database_backups`, `scaling_rules`.
-
+- **API Server:** An Express 5 REST API handles all backend operations.
+- **Database:** PostgreSQL with Drizzle ORM.
+- **Authentication:** Clerk for user management, JWT for API client authentication, supporting Google and GitHub OAuth. Features 2FA/TOTP and SAML/SSO.
+- **Validation:** Zod is used for API request body validation.
+- **API Codegen:** Orval generates React Query hooks and Zod schemas from an OpenAPI specification.
+- **WebSocket:** A dedicated WebSocket server (`/ws`) using Socket.IO and Yjs CRDT supports real-time features like terminal interaction, collaboration, and notifications.
+- **Security:** Implemented with Helmet, CORS, `express-rate-limit`, plan-tiered rate limits, AES-256-GCM encryption for secrets, active session tracking, brute-force lockout, API key scoping, IP allowlisting, and org-level RBAC policies. A dedicated Security Center UI is provided.
+- **Compliance & Privacy:** Supports GDPR DSAR, granular cookie consent, data residency (US/EU/APAC), data retention policies, and DPA generation.
+- **AI Gateway:** Connects to 38 AI models from 25 providers with a Smart AI Router for optimal model selection, AI Benchmarking, BYOK support, and in-project AI chat.
+- **Credits & Billing:** Stripe integration for billing, credit management, on-demand top-ups, and metered billing. An Admin Pricing Engine allows full control over service prices and margins, complemented by a Service Marketplace for granular billing. Supports 11 payment methods.
+- **Universal AI Model Connector:** Allows integration of any AI model from 25+ providers, with admin controls for pricing, rate limits, and health monitoring.
+- **Super Admin Control Center:** A unified dashboard providing access to 12 admin control panels.
+- **SCIM v2:** Supports enterprise SSO user provisioning.
+- **Design Templates:** 18 ready-to-deploy templates across various categories.
+- **Design System:** Comprehensive design tokens exportable to various formats.
+- **Real-Time Collaboration:** Socket.IO and Yjs CRDT enable multiplayer editing, terminal sharing, and presence tracking.
+- **Container/Deployment:** Features a simulated container engine UI, GPU support, blue-green/canary deployments, geo-routing, CDN, multi-region, autoscale, and static site deployments.
+- **BaaS:** Offers Backend-as-a-Service with database, auth, storage, edge functions, and real-time capabilities.
+- **MCP Integration:** Integrates with 5 built-in MCP servers (Filesystem, Database, Git, Browser, Terminal) and supports custom servers.
+- **White-Label:** Provides enterprise custom branding options.
+- **Publishing Controls:** Includes approval workflows, environment management (production/staging/preview), and rollback capabilities.
+- **Sharing Controls:** Manages public/private/internal/unlisted visibility and shareable links.
+- **Knowledge Base:** Custom AI context documents with URL import.
+- **RBAC:** Supports 5 system roles and custom role creation with a granular permission matrix.
+- **Internal Publish:** Enables private deployments with IP restrictions and password protection.
+- **DevOps:** CI/CD pipeline, build cache, coverage, linting, vulnerability scanning, and automated testing before deployment.
+- **i18n:** Supports 134+ languages, including RTL.
+- **Middleware Stack:** Includes `requestId`, `requestLogger`, `responseTime`, `noSniff`, and `auditMiddleware`.
+- **Infrastructure Services:** Redis cache simulation, database backup management (PITR, snapshots), CDN configuration, observability dashboard, BullMQ-like queue persistence, graceful shutdown, and enhanced health monitoring.
+- **Background Jobs:** Asynchronous tasks for maintenance and processing.
+- **Authorization:** `requireProjectAccess` middleware enforces access control based on user roles and project context, including IDOR prevention.
+- **Issue Tracker:** Project-level issue tracking with status, labels, assignees, code references, and threaded comments.
+- **GitHub Sync:** Two-way GitHub synchronization with push/pull/history tracking (backend: `/api/github-sync/*`).
+- **Extensions Marketplace:** 12 curated extensions across categories with install/uninstall (backend: `/api/extensions-marketplace/*`).
+- **Version History:** Checkpoint system with auto/manual/deploy/ai_agent types (backend: `/api/version-history/*`).
+- **Community Hub:** Public page showcasing creators, projects, forks, and trending content.
+- **Debugger:** Interactive debugging with breakpoints, call stack, variables, watch expressions, and console.
+- **Package Manager:** Visual dependency management with search, install, update, and vulnerability scanning.
+- **Themes:** 10 editor themes with live preview and customization.
+- **Component Library:** Reusable UI component collection with live previews and code snippets.
+- **Figma Import:** Convert Figma designs to React/Tailwind components.
+- **AI Code Review:** Automated code analysis with security, performance, and style checks plus auto-fix suggestions.
+- **Project & Organization Management:** Functionality for creating, listing, forking, exporting, and managing projects, files, collaborators, and deployments. Also supports organization, member, and shared secret management.
+- **IDE Tools:** Comprehensive suite of IDE tools including Docker image builder, rate limit dashboard, performance auditing, dependency license checker, collaborative TODO list, traffic analytics, coding time tracking, environment comparison, container networking, cost optimizer, container debug inspector, regex code search, deploy monitoring alerts, automated security patching, image vulnerability scanner, project embed widget configurator, smart terminal, project documentation wiki, and auto-documentation from TypeScript types.
+- **Platform Services:** Includes a wide array of services like container engine, GitHub integration, notification system, team management, activity feed, usage limits, webhooks, user onboarding, feature flags, support tickets, cloud functions, scheduled tasks, edge config, database backups, log streaming, API keys, search index, email service, SSO providers, IP filtering, session management, deployment strategies, platform metrics, GraphQL API, CLI tools, and project archival.
 
 ## External Dependencies
 
@@ -147,12 +69,12 @@ The frontend uses React 19, Vite, and Tailwind CSS v4, providing a responsive an
 - **Code Editor:** Monaco Editor (`@monaco-editor/react`)
 - **Terminal:** xterm.js
 - **Frontend Framework:** React 19
-- **Build Tool:** Vite, esbuild
+- **Build Tool:** Vite
 - **Styling:** Tailwind CSS v4
 - **Routing:** wouter
 - **State Management:** Zustand
 - **Validation:** Zod, `drizzle-zod`
 - **WebSockets:** Socket.IO (`socket.io`, `socket.io-client`)
 - **Real-Time Collaboration:** Yjs CRDT (`yjs`, `y-monaco`)
-- **Security:** `helmet`, `cors`, `express-rate-limit`, `ua-parser-js`
+- **Security:** `helmet`, `cors`, `express-rate-limit`
 - **Payments:** Stripe (`stripe`)

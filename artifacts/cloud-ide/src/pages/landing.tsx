@@ -405,8 +405,7 @@ export default function LandingPage() {
               ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
         {/* CTA */}
         <section className="py-24 px-6 border-t border-border/50 relative overflow-hidden">

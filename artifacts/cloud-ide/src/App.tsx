@@ -53,10 +53,7 @@ import ImportProjectPage from "@/pages/import-project";
 import LiveSharePage from "@/pages/live-share";
 import TemplateStorePage from "@/pages/template-store";
 import ErrorTrackingPage from "@/pages/error-tracking";
-import {
-  ProductPage, SolutionsPage, BlogPage, CareersPage,
-  DocsPage, AboutPage, TermsPage, PrivacyPage,
-} from "@/pages/marketing-stub";
+import { AboutPage, TermsPage, PrivacyPage } from "@/pages/marketing-stub";
 import BuildHubPage from "@/pages/buildhub";
 import BuildHubWorkspace from "@/pages/buildhub-workspace";
 import NotFound from "@/pages/not-found";
@@ -278,11 +275,6 @@ function ClerkProviderWithRoutes() {
             <Route path="/build/:id">
               {(params) => <BuildHubWorkspace id={params.id} />}
             </Route>
-            <Route path="/product" component={ProductPage} />
-            <Route path="/solutions" component={SolutionsPage} />
-            <Route path="/blog" component={BlogPage} />
-            <Route path="/careers" component={CareersPage} />
-            <Route path="/docs" component={DocsPage} />
             <Route path="/about" component={AboutPage} />
             <Route path="/terms" component={TermsPage} />
             <Route path="/privacy" component={PrivacyPage} />

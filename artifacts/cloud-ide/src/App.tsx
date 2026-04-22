@@ -70,8 +70,23 @@ function stripBase(path: string): string {
     : path;
 }
 
-if (!clerkPubKey) {
-  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY");
+function MissingClerkKeyScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background px-6">
+      <div className="max-w-lg text-center space-y-4">
+        <div className="text-5xl">🔐</div>
+        <h1 className="text-2xl font-semibold">Authentication not configured</h1>
+        <p className="text-muted-foreground text-sm">
+          The app needs a Clerk publishable key to enable sign-in. Set
+          <code className="mx-1 px-1.5 py-0.5 rounded bg-muted text-xs font-mono">VITE_CLERK_PUBLISHABLE_KEY</code>
+          in your environment, then reload.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          You can still browse the rest of the app once the key is set.
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function HomeRedirect() {
@@ -175,6 +190,10 @@ function ClerkQueryClientCacheInvalidator() {
 
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
+
+  if (!clerkPubKey) {
+    return <MissingClerkKeyScreen />;
+  }
 
   return (
     <ClerkProvider

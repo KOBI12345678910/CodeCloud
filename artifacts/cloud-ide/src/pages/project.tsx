@@ -256,6 +256,58 @@ import { useToast } from "@/hooks/use-toast";
 import { useLayoutPersistence } from "@/hooks/useLayoutPersistence";
 import { useTheme } from "@/contexts/theme-context";
 
+function buildSampleFiles(projectId: string): FileNode[] {
+  const nowIso = new Date().toISOString();
+  const make = (name: string, content: string, mimeType: string): FileNode => ({
+    id: `sample-${name}`,
+    projectId,
+    path: name,
+    name,
+    isDirectory: false,
+    content,
+    sizeBytes: content.length,
+    mimeType,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  });
+  return [
+    make("index.html", `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CodeCloud Demo</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Hello from CodeCloud</h1>
+      <p id="counter">Clicks: 0</p>
+      <button id="bump">Click me</button>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
+`, "text/html"),
+    make("style.css", `:root { color-scheme: dark; --bg:#0a0a0b; --fg:#e6edf3; --accent:#1d4ed8; }
+* { box-sizing: border-box; }
+body { margin:0; font-family: -apple-system, system-ui, sans-serif; background:var(--bg); color:var(--fg); }
+.container { max-width:480px; margin:10vh auto; padding:2rem; border-radius:16px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); text-align:center; }
+button { margin-top:1rem; padding:0.6rem 1.2rem; background:var(--accent); color:#fff; border:0; border-radius:8px; font-size:1rem; cursor:pointer; }
+button:hover { filter: brightness(1.1); }
+`, "text/css"),
+    make("app.js", `const counter = document.getElementById("counter");
+const button = document.getElementById("bump");
+let clicks = 0;
+button.addEventListener("click", () => {
+  clicks += 1;
+  counter.textContent = \`Clicks: \${clicks}\`;
+});
+console.log("CodeCloud demo ready");
+`, "application/javascript"),
+  ];
+}
+
 interface FileNode {
   id: string;
   projectId: string;
@@ -572,7 +624,9 @@ function EditorPaneView({
       retry: false,
     },
   });
-  const activeFileData = apiActiveFileData ?? (selectedFileId ? (files?.find?.((f) => f.id === selectedFileId) ?? null) : null);
+  const activeFileData = apiActiveFileData ?? (selectedFileId && String(selectedFileId).startsWith("sample-")
+    ? (buildSampleFiles(projectId).find((f) => f.id === selectedFileId) ?? null)
+    : null);
 
   const handleEditorChange = useCallback(
     (value: string | undefined) => {
@@ -783,87 +837,8 @@ export default function ProjectPage({ id }: { id: string }) {
   const { data: apiFiles, error: filesError } = useListFiles(id, {
     query: { queryKey: getListFilesQueryKey(id), retry: false },
   });
-  const sampleFiles = useMemo<FileNode[]>(() => {
-    const nowIso = new Date().toISOString();
-    const make = (name: string, content: string, mimeType: string): FileNode => ({
-      id: `sample-${name}`,
-      projectId: id,
-      path: name,
-      name,
-      isDirectory: false,
-      content,
-      sizeBytes: content.length,
-      mimeType,
-      createdAt: nowIso,
-      updatedAt: nowIso,
-    });
-    return [
-      make("index.html", `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>CodeCloud Demo</title>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <main class="container">
-      <h1>Hello from CodeCloud</h1>
-      <p id="counter">Clicks: 0</p>
-      <button id="bump">Click me</button>
-    </main>
-    <script src="app.js"></script>
-  </body>
-</html>
-`, "text/html"),
-      make("style.css", `:root {
-  color-scheme: dark;
-  --bg: #0a0a0b;
-  --fg: #e6edf3;
-  --accent: #1d4ed8;
-}
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  font-family: -apple-system, system-ui, sans-serif;
-  background: var(--bg);
-  color: var(--fg);
-}
-.container {
-  max-width: 480px;
-  margin: 10vh auto;
-  padding: 2rem;
-  border-radius: 16px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.08);
-  text-align: center;
-}
-button {
-  margin-top: 1rem;
-  padding: 0.6rem 1.2rem;
-  background: var(--accent);
-  color: #fff;
-  border: 0;
-  border-radius: 8px;
-  font-size: 1rem;
-  cursor: pointer;
-}
-button:hover { filter: brightness(1.1); }
-`, "text/css"),
-      make("app.js", `const counter = document.getElementById("counter");
-const button = document.getElementById("bump");
-
-let clicks = 0;
-button.addEventListener("click", () => {
-  clicks += 1;
-  counter.textContent = \`Clicks: \${clicks}\`;
-});
-
-console.log("CodeCloud demo ready");
-`, "application/javascript"),
-    ];
-  }, [id]);
-  const files = (apiFiles && apiFiles.length > 0) ? apiFiles : (filesError || apiFiles ? sampleFiles : sampleFiles);
+  const sampleFiles = useMemo<FileNode[]>(() => buildSampleFiles(id), [id]);
+  const files = (apiFiles && apiFiles.length > 0) ? apiFiles : sampleFiles;
   const { data: collaborators } = useListCollaborators(id, {
     query: { queryKey: ["collaborators", id] },
   });
@@ -1150,7 +1125,9 @@ console.log("CodeCloud demo ready");
       },
     }
   );
-  const activeFileData = apiActiveFileData2 ?? (selectedFileId ? (files?.find?.((f) => f.id === selectedFileId) ?? null) : null);
+  const activeFileData = apiActiveFileData2 ?? (selectedFileId && String(selectedFileId).startsWith("sample-")
+    ? (buildSampleFiles(id).find((f) => f.id === selectedFileId) ?? null)
+    : null);
 
   const createFile = useCreateFile();
   const updateFile = useUpdateFile();

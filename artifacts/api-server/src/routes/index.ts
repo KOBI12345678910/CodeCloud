@@ -295,6 +295,7 @@ import domainsRouter from "./domains";
 import billingRouter from "./billing";
 import mobileRouter from "./mobile";
 import buildhubRouter from "./buildhub";
+import bountiesRouter from "./bounties";
 
 const router: IRouter = Router();
 
@@ -594,5 +595,6 @@ router.use(domainsRouter);
 router.use(billingRouter);
 router.use(mobileRouter);
 router.use(buildhubRouter);
+router.use(bountiesRouter);
 
 export default router;

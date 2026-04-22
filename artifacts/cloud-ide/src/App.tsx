@@ -57,6 +57,7 @@ import ErrorTrackingPage from "@/pages/error-tracking";
 import { AboutPage, TermsPage, PrivacyPage } from "@/pages/marketing-stub";
 import BuildHubPage from "@/pages/buildhub";
 import BuildHubWorkspace from "@/pages/buildhub-workspace";
+import BountiesPage from "@/pages/bounties";
 import NotFound from "@/pages/not-found";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -254,6 +255,7 @@ function ClerkProviderWithRoutes() {
             <Route path="/product" component={ProductPage} />
             <Route path="/solutions" component={SolutionsPage} />
             <Route path="/blog" component={BlogPage} />
+            <Route path="/blog/:slug" component={BlogPage} />
             <Route path="/careers" component={CareersPage} />
             <Route path="/docs" component={DocsPage} />
             <Route path="/status" component={StatusPage} />
@@ -341,6 +343,8 @@ function ClerkProviderWithRoutes() {
             <Route path="/error-tracking">
               <ProtectedRoute component={ErrorTrackingPage} />
             </Route>
+            <Route path="/bounties" component={BountiesPage} />
+            <Route path="/bounties/:id" component={BountiesPage} />
             <Route path="/build" component={BuildHubPage} />
             <Route path="/build/:id">
               {(params) => <BuildHubWorkspace id={params.id} />}

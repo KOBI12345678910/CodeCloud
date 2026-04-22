@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Code2, ArrowLeft, Sparkles, Bug, TrendingUp, Filter } from "lucide-react";
+import { Code2, ArrowLeft, Sparkles, Bug, TrendingUp, Filter, Rss, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+
+const API = `${import.meta.env.VITE_API_URL || ""}/api`;
 
 type Category = "feature" | "fix" | "improvement";
 
@@ -80,6 +84,37 @@ const categoryConfig: Record<Category, { icon: typeof Sparkles; label: string; c
   improvement: { icon: TrendingUp, label: "Improved", color: "text-blue-400", bg: "bg-blue-500/20" },
 };
 
+function SubscribeBar() {
+  const { toast } = useToast();
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch(`${API}/newsletter/subscribe`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, topic: "changelog" }),
+      });
+      if (res.ok) { toast({ title: "You're subscribed" }); setEmail(""); }
+      else toast({ title: "Invalid email", variant: "destructive" });
+    } finally { setBusy(false); }
+  };
+  return (
+    <div className="mb-8 p-4 rounded-lg border border-border/40 bg-card/50 flex flex-col sm:flex-row items-center gap-3" data-testid="changelog-subscribe">
+      <Mail className="w-5 h-5 text-primary shrink-0" />
+      <div className="flex-1 min-w-0 text-sm">
+        <p className="font-medium">Subscribe to release notes</p>
+        <p className="text-xs text-muted-foreground">Get an email when we ship something new.</p>
+      </div>
+      <div className="flex gap-2 w-full sm:w-auto">
+        <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@dev.io" className="sm:w-56" data-testid="changelog-email" />
+        <Button onClick={submit} disabled={busy || !email}>Subscribe</Button>
+        <a href={`${API}/changelog/rss.xml`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center w-9 h-9 rounded-md border border-border/40 hover:bg-muted/40" title="RSS" data-testid="changelog-rss"><Rss className="w-4 h-4" /></a>
+      </div>
+    </div>
+  );
+}
+
 export default function ChangelogPage() {
   const [filter, setFilter] = useState<Category | "all">("all");
 
@@ -126,6 +161,8 @@ export default function ChangelogPage() {
             ))}
           </div>
         </div>
+
+        <SubscribeBar />
 
         <div className="relative">
           <div className="absolute left-[19px] top-0 bottom-0 w-px bg-border/30" />

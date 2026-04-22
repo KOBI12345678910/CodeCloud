@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { Code2, Menu } from "lucide-react";
+import { Code2, Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useTranslation } from "@/i18n";
+import CommandPalette from "@/components/CommandPalette";
 
 export default function MarketingHeader() {
   const { t } = useTranslation();
   const [scrolled, setScrolled] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const links = [
     { key: "product", label: t("nav.product"), href: "/product" },
@@ -24,6 +26,17 @@ export default function MarketingHeader() {
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   return (
@@ -62,6 +75,16 @@ export default function MarketingHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            className="hidden md:inline-flex items-center gap-2 px-3 h-9 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-sm transition-colors"
+            data-testid="marketing-search-trigger"
+          >
+            <Search className="w-3.5 h-3.5" />
+            <span>{t("nav.search") || "Search"}</span>
+            <kbd className="hidden lg:inline-flex items-center gap-0.5 text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/10 border border-white/10">⌘K</kbd>
+          </button>
           <LanguageSwitcher variant="compact" />
           <Link href="/sign-in">
             <Button
@@ -135,6 +158,7 @@ export default function MarketingHeader() {
           </Sheet>
         </div>
       </div>
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </header>
   );
 }

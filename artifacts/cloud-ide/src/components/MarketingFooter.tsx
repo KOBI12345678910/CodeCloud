@@ -24,6 +24,7 @@ export default function MarketingFooter() {
         { label: t("nav.docs"), href: "/docs" },
         { label: t("footer.api"), href: "/api-docs" },
         { label: t("footer.templates"), href: "/explore?tab=templates" },
+        { label: "Bounties", href: "/bounties" },
         { label: t("footer.community"), href: "/blog" },
       ],
     },

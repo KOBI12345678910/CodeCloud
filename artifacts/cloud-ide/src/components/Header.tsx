@@ -3,8 +3,9 @@ import { Link, useLocation } from "wouter";
 import { useUser, useClerk } from "@clerk/react";
 import {
   Code2, Bell, Menu, LayoutDashboard,
-  CreditCard, Settings, User, Shield, LogOut,
+  CreditCard, Settings, User, Shield, LogOut, Search,
 } from "lucide-react";
+import CommandPalette from "@/components/CommandPalette";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -26,6 +27,7 @@ export default function Header({ variant = "default" }: HeaderProps) {
   const { signOut } = useClerk();
   const [location, navigate] = useLocation();
   const [scrolled, setScrolled] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const PUBLIC_NAV = [
     { key: "buildhub", label: t("nav.buildhub"), href: "/build", badge: t("common.new") },
@@ -41,6 +43,17 @@ export default function Header({ variant = "default" }: HeaderProps) {
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   const isAdmin = (user?.publicMetadata as any)?.role === "admin";
@@ -91,7 +104,20 @@ export default function Header({ variant = "default" }: HeaderProps) {
           </nav>
         )}
 
-        <div className="flex-1" />
+        <div className="flex-1 flex justify-end max-w-md mx-4">
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            className="hidden md:inline-flex items-center gap-2 w-full max-w-xs px-3 h-9 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-sm transition-colors"
+            data-testid="header-search-trigger"
+          >
+            <Search className="w-3.5 h-3.5" />
+            <span className="flex-1 text-left">Search...</span>
+            <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/10 border border-white/10">
+              <span>⌘</span>K
+            </kbd>
+          </button>
+        </div>
 
         {user ? (
           <>
@@ -228,6 +254,7 @@ export default function Header({ variant = "default" }: HeaderProps) {
           </Sheet>
         )}
       </div>
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </header>
   );
 }

@@ -45,6 +45,31 @@ app.use(generalLimiter);
 
 app.use(clerkMiddleware());
 
+app.get("/health", (_req, res) => {
+  res.json({
+    status: "ok",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get("/api", (_req, res) => {
+  res.json({
+    name: "CodeCloud API",
+    version: "1.0.0",
+    status: "ok",
+    docs: "/api-docs",
+  });
+});
+
+app.get("/api/users", (_req, res) => {
+  res.json({
+    users: [],
+    total: 0,
+    note: "Authenticated endpoint stub - sign in to list real users.",
+  });
+});
+
 app.use("/api", router);
 
 export default app;

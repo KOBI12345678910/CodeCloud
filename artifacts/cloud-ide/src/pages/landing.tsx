@@ -9,12 +9,24 @@ import { Button } from "@/components/ui/button";
 import MarketingHeader from "@/components/MarketingHeader";
 import MarketingFooter from "@/components/MarketingFooter";
 
-function useReveal<T extends HTMLElement>() {
+function shouldSkipAnimations(): boolean {
+  if (typeof window === "undefined") return true;
+  if (!("IntersectionObserver" in window)) return true;
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return true;
+  return false;
+}
+
+function useReveal<T extends HTMLElement>(initialVisible = false) {
   const ref = useRef<T>(null);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(initialVisible || shouldSkipAnimations());
   useEffect(() => {
+    if (visible) return;
     const el = ref.current;
     if (!el) return;
+    if (!("IntersectionObserver" in window)) {
+      setVisible(true);
+      return;
+    }
     const obs = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -25,13 +37,17 @@ function useReveal<T extends HTMLElement>() {
       { threshold: 0.15 }
     );
     obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
+    const fallback = window.setTimeout(() => setVisible(true), 1500);
+    return () => {
+      obs.disconnect();
+      window.clearTimeout(fallback);
+    };
+  }, [visible]);
   return { ref, visible };
 }
 
-function Reveal({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
-  const { ref, visible } = useReveal<HTMLDivElement>();
+function Reveal({ children, delay = 0, className = "", immediate = false }: { children: React.ReactNode; delay?: number; className?: string; immediate?: boolean }) {
+  const { ref, visible } = useReveal<HTMLDivElement>(immediate);
   return (
     <div
       ref={ref}
@@ -211,11 +227,16 @@ const FOOTER_LINKS: Record<string, { label: string; href: string }[]> = {
 
 export default function LandingPage() {
   const statsRef = useRef<HTMLDivElement>(null);
-  const [statsVisible, setStatsVisible] = useState(false);
+  const [statsVisible, setStatsVisible] = useState(shouldSkipAnimations());
 
   useEffect(() => {
+    if (statsVisible) return;
     const el = statsRef.current;
     if (!el) return;
+    if (!("IntersectionObserver" in window)) {
+      setStatsVisible(true);
+      return;
+    }
     const obs = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -226,8 +247,12 @@ export default function LandingPage() {
       { threshold: 0.3 }
     );
     obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
+    const fallback = window.setTimeout(() => setStatsVisible(true), 2500);
+    return () => {
+      obs.disconnect();
+      window.clearTimeout(fallback);
+    };
+  }, [statsVisible]);
 
   const scrollToFeatures = () => {
     document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
@@ -254,7 +279,7 @@ export default function LandingPage() {
           />
 
           <div className="max-w-5xl mx-auto text-center relative">
-            <Reveal>
+            <Reveal immediate>
               <Link href="/blog">
                 <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-xs sm:text-sm text-primary mb-8 hover:bg-primary/10 transition-colors cursor-pointer">
                   <Sparkles className="w-3.5 h-3.5" />
@@ -264,7 +289,7 @@ export default function LandingPage() {
               </Link>
             </Reveal>
 
-            <Reveal delay={80}>
+            <Reveal delay={80} immediate>
               <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05]">
                 Build, ship, and
                 <br />
@@ -274,13 +299,13 @@ export default function LandingPage() {
               </h1>
             </Reveal>
 
-            <Reveal delay={160}>
+            <Reveal delay={160} immediate>
               <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
                 The cloud IDE trusted by 50,000+ developers. Write code, collaborate with your team, and deploy to production — without ever leaving the browser.
               </p>
             </Reveal>
 
-            <Reveal delay={240}>
+            <Reveal delay={240} immediate>
               <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link href="/sign-up">
                   <Button size="lg" className="px-8 h-12 text-base shadow-lg shadow-primary/20" data-testid="button-get-started">
@@ -294,7 +319,7 @@ export default function LandingPage() {
               <p className="mt-4 text-sm text-muted-foreground">No credit card required. Free forever tier available.</p>
             </Reveal>
 
-            <Reveal delay={320}>
+            <Reveal delay={320} immediate>
               <AnimatedCodeEditor />
             </Reveal>
           </div>
@@ -322,9 +347,9 @@ export default function LandingPage() {
         {/* Stats */}
         <section className="py-16 px-6 border-t border-border/50" ref={statsRef}>
           <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
-            <StatsCounter value={10000} suffix="+" label="Developers" active={statsVisible} />
-            <StatsCounter value={50000} suffix="+" label="Projects Created" active={statsVisible} />
-            <StatsCounter value={1000000} suffix="+" label="Deployments" active={statsVisible} />
+            <StatsCounter value={50000} suffix="+" label="Developers" active={statsVisible} />
+            <StatsCounter value={120000} suffix="+" label="Projects Created" active={statsVisible} />
+            <StatsCounter value={450000} suffix="+" label="Deployments" active={statsVisible} />
             <div className="text-center">
               <div className="text-3xl md:text-4xl font-bold bg-gradient-to-br from-primary to-blue-400 bg-clip-text text-transparent" data-testid="stat-uptime">
                 99.9%
@@ -338,7 +363,7 @@ export default function LandingPage() {
         <section className="py-24 px-6 border-t border-border/50 relative" id="features">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
           <div className="max-w-6xl mx-auto relative">
-            <Reveal>
+            <Reveal immediate>
               <div className="text-center mb-16">
                 <h2 className="text-3xl md:text-5xl font-bold tracking-tight">Everything you need to build</h2>
                 <p className="mt-4 text-muted-foreground max-w-xl mx-auto text-lg">
@@ -365,7 +390,7 @@ export default function LandingPage() {
         {/* Pricing */}
         <section className="py-24 px-6 border-t border-border/50" id="pricing">
           <div className="max-w-6xl mx-auto">
-            <Reveal>
+            <Reveal immediate>
               <div className="text-center mb-16">
                 <h2 className="text-3xl md:text-5xl font-bold tracking-tight">Simple, transparent pricing</h2>
                 <p className="mt-4 text-muted-foreground max-w-lg mx-auto text-lg">
@@ -420,7 +445,7 @@ export default function LandingPage() {
         {/* Testimonials */}
         <section className="py-24 px-6 border-t border-border/50">
           <div className="max-w-5xl mx-auto">
-            <Reveal>
+            <Reveal immediate>
               <div className="text-center mb-16">
                 <h2 className="text-3xl md:text-5xl font-bold tracking-tight">Loved by developers</h2>
                 <p className="mt-4 text-muted-foreground text-lg">See what our users have to say.</p>
@@ -456,7 +481,7 @@ export default function LandingPage() {
         <section className="py-24 px-6 border-t border-border/50 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_60%_at_50%_50%,hsl(224_76%_48%/0.18),transparent_60%)] pointer-events-none" />
           <div className="max-w-3xl mx-auto text-center relative">
-            <Reveal>
+            <Reveal immediate>
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
                 Ready to build your next project?
               </h2>

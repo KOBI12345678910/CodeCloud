@@ -55,4 +55,36 @@ router.get("/explore", async (req, res): Promise<void> => {
   }));
 });
 
+router.get("/explore/featured", async (_req, res): Promise<void> => {
+  const projects = await db.select({
+    id: projectsTable.id,
+    ownerId: projectsTable.ownerId,
+    name: projectsTable.name,
+    slug: projectsTable.slug,
+    description: projectsTable.description,
+    language: projectsTable.language,
+    isPublic: projectsTable.isPublic,
+    deployedUrl: projectsTable.deployedUrl,
+    createdAt: projectsTable.createdAt,
+    ownerName: usersTable.displayName,
+  })
+    .from(projectsTable)
+    .leftJoin(usersTable, eq(projectsTable.ownerId, usersTable.id))
+    .where(eq(projectsTable.isPublic, true))
+    .orderBy(desc(projectsTable.createdAt))
+    .limit(12);
+  res.json({ featured: projects });
+});
+
+router.get("/explore/categories", async (_req, res): Promise<void> => {
+  const rows = await db.select({
+    language: projectsTable.language,
+    count: count(),
+  })
+    .from(projectsTable)
+    .where(eq(projectsTable.isPublic, true))
+    .groupBy(projectsTable.language);
+  res.json({ categories: rows });
+});
+
 export default router;

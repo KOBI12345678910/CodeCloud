@@ -17,9 +17,14 @@ export default function StaffLoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isLoaded || !signIn || !setActive) return;
     setLoading(true);
     setError("");
+
+    if (!isLoaded || !signIn || !setActive) {
+      setError("המערכת לא מוכנה. נסה שוב בעוד רגע.");
+      setLoading(false);
+      return;
+    }
 
     try {
       const result = await signIn.create({
@@ -71,7 +76,7 @@ export default function StaffLoginPage() {
           <CardContent className="p-6 pt-4">
             <form onSubmit={handleLogin} className="space-y-4">
               {error && (
-                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400 text-center">
+                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400 text-center" data-testid="staff-login-error" role="alert">
                   {error}
                 </div>
               )}

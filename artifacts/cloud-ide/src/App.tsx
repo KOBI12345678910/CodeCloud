@@ -160,9 +160,7 @@ function ClerkProviderWithRoutes() {
             <Route path="/reset-password" component={ResetPasswordPage} />
             <Route path="/sign-in/*?" component={SignInPage} />
             <Route path="/sign-up/*?" component={SignUpPage} />
-            <Route path="/dashboard">
-              <ProtectedRoute component={DashboardPage} />
-            </Route>
+            <Route path="/dashboard" component={DashboardPage} />
             <Route path="/project/:id">
               {(params) => (
                 <Show when="signed-in">

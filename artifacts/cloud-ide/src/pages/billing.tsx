@@ -92,6 +92,7 @@ export default function BillingDashboard() {
       url.searchParams.delete("stripe");
       window.history.replaceState({}, "", url.toString());
     }
+    return undefined;
   }, [refresh]);
 
   const topup = useCallback(async () => {

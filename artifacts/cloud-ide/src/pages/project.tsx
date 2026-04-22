@@ -565,12 +565,14 @@ function EditorPaneView({
   const editorRef = useRef<{ getValue: () => string } | null>(null);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { data: activeFileData } = useGetFile(projectId, selectedFileId || "", {
+  const { data: apiActiveFileData } = useGetFile(projectId, selectedFileId || "", {
     query: {
-      enabled: !!selectedFileId,
+      enabled: !!selectedFileId && !String(selectedFileId).startsWith("sample-"),
       queryKey: getGetFileQueryKey(projectId, selectedFileId || ""),
+      retry: false,
     },
   });
+  const activeFileData = apiActiveFileData ?? (selectedFileId ? (files?.find?.((f) => f.id === selectedFileId) ?? null) : null);
 
   const handleEditorChange = useCallback(
     (value: string | undefined) => {
@@ -1137,16 +1139,18 @@ console.log("CodeCloud demo ready");
     };
   }, [yjsCollab.isInitialized, selectedFileId, yjsCollab.bindToMonaco, yjsCollab.unbindMonaco, activePaneIndex, panes]);
 
-  const { data: activeFileData } = useGetFile(
+  const { data: apiActiveFileData2 } = useGetFile(
     id,
     selectedFileId || "",
     {
       query: {
-        enabled: !!selectedFileId,
+        enabled: !!selectedFileId && !String(selectedFileId).startsWith("sample-"),
         queryKey: getGetFileQueryKey(id, selectedFileId || ""),
+        retry: false,
       },
     }
   );
+  const activeFileData = apiActiveFileData2 ?? (selectedFileId ? (files?.find?.((f) => f.id === selectedFileId) ?? null) : null);
 
   const createFile = useCreateFile();
   const updateFile = useUpdateFile();

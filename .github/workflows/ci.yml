@@ -1,3 +1,0 @@
-# CI workflow - see .github/ci-backup.yml for full version
-# Moved to avoid GitHub OAuth scope issues during push
-name: CI-placeholder

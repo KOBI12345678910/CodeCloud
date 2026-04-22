@@ -72,6 +72,10 @@ import DesignTokensPage from "@/pages/design-tokens";
 import SharingPage from "@/pages/sharing";
 import PublishingControlsPage from "@/pages/publishing-controls";
 import KnowledgeBasePage from "@/pages/knowledge-base";
+import AdminPricingPage from "@/pages/admin-pricing";
+import ServiceMarketplacePage from "@/pages/service-marketplace";
+import ModelConnectorPage from "@/pages/model-connector";
+import SuperAdminPage from "@/pages/super-admin";
 import NotFound from "@/pages/not-found";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -402,6 +406,18 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/knowledge-base">
               <ProtectedRoute component={KnowledgeBasePage} />
+            </Route>
+            <Route path="/admin/pricing">
+              <ProtectedRoute component={AdminPricingPage} />
+            </Route>
+            <Route path="/service-marketplace">
+              <ProtectedRoute component={ServiceMarketplacePage} />
+            </Route>
+            <Route path="/model-connector">
+              <ProtectedRoute component={ModelConnectorPage} />
+            </Route>
+            <Route path="/super-admin">
+              <ProtectedRoute component={SuperAdminPage} />
             </Route>
             <Route path="/bounties" component={BountiesPage} />
             <Route path="/bounties/:id" component={BountiesPage} />

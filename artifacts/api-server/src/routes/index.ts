@@ -219,6 +219,9 @@ import geoRoutingRouter from "./geo-routing";
 import deploymentRegionRoutingRouter from "./deployment-region-routing";
 import jobQueueRouter from "./job-queue";
 import adminKpiRouter from "./admin-kpi";
+import adminPricingRouter from "./admin-pricing";
+import serviceBillingRouter from "./service-billing";
+import modelConnectorRouter from "./model-connector";
 import auditLogRouter from "./audit-log";
 // Legacy two-factor routes removed — replaced by secure /security/2fa/* endpoints
 import referralRouter from "./referral";
@@ -552,6 +555,9 @@ router.use(geoRoutingRouter);
 router.use(deploymentRegionRoutingRouter);
 router.use(jobQueueRouter);
 router.use(adminKpiRouter);
+router.use(adminPricingRouter);
+router.use(serviceBillingRouter);
+router.use(modelConnectorRouter);
 router.use(auditLogRouter);
 // twoFactorRouter removed — use securityRouter for 2FA
 router.use(referralRouter);

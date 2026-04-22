@@ -42,6 +42,20 @@ const SYSTEM_PROMPTS = {
   "phases": [{ "name": string, "tasks": string[], "estimateHours": number }]
 }`,
   test: `You are a test generation expert. Given a source file, generate a complete, runnable test file using the conventional testing framework for the language (Vitest/Jest for TS/JS, pytest for Python, Go's testing package for Go, etc.). Output ONLY a fenced code block with the language tag containing the full test file. Cover happy paths, edge cases, and error conditions.`,
+  build: `You are an autonomous AI engineer that edits multiple files at once, like Lovable or Replit Agent. Given the project context (file tree, active file content) and a user instruction, plan a minimal set of file changes and respond ONLY with a single JSON object (no prose, no markdown fences) of this exact shape:
+{
+  "summary": "one-paragraph human description of the change",
+  "files": [
+    { "path": "relative/path.ts", "action": "create" | "update" | "delete", "content": "FULL FILE CONTENT (omit for delete)" }
+  ],
+  "commands": ["optional shell commands to run after, e.g. npm install foo"]
+}
+Rules:
+- Always return COMPLETE file contents, not diffs.
+- Prefer modifying existing files over creating new ones.
+- Never include placeholder TODOs.
+- Keep changes scoped to the user's request.
+- Output VALID JSON only, starting with { and ending with }.`,
 };
 
 interface ChatMessage {
@@ -577,6 +591,21 @@ router.post("/ai/architecture", requireAuth, async (req, res): Promise<void> => 
     console.error("[ai] architecture error:", msg);
     res.status(502).json({ error: "AI provider error", details: msg });
   }
+});
+
+router.post("/ai/build", requireAuth, async (req, res): Promise<void> => {
+  await runEndpoint(
+    req as AuthenticatedRequest,
+    res,
+    "build",
+    SYSTEM_PROMPTS.build,
+    (body, ctx) => {
+      const instruction = String(body.instruction ?? body.prompt ?? body.message ?? "");
+      return `${ctx}\n\n## Instruction\n${instruction}\n\nRespond with the JSON object only.`;
+    },
+    (body) => `Build: ${String(body.instruction ?? body.prompt ?? "").slice(0, 100)}`,
+    { titlePrefix: "Build" },
+  );
 });
 
 router.post("/ai/test", requireAuth, async (req, res): Promise<void> => {

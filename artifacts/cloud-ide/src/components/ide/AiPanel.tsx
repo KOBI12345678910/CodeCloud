@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
-import { Bot, Send, X, Plus, Trash2, History, Loader2, Copy, Check, Wand2 } from "lucide-react";
+import { Bot, Send, X, Plus, Trash2, History, Loader2, Copy, Check, Wand2, FilePlus, FileEdit, FileX, ChevronRight, ChevronDown, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Role = "user" | "assistant";
@@ -15,10 +15,11 @@ interface Conversation {
   tokenCount?: { input: number; output: number };
 }
 
-type AiMode = "chat" | "generate" | "debug" | "explain" | "refactor" | "review" | "test" | "architecture";
+type AiMode = "chat" | "build" | "generate" | "debug" | "explain" | "refactor" | "review" | "test" | "architecture";
 
 const MODES: { id: AiMode; label: string; endpoint: string }[] = [
   { id: "chat", label: "Chat", endpoint: "chat" },
+  { id: "build", label: "Build", endpoint: "build" },
   { id: "generate", label: "Generate", endpoint: "generate" },
   { id: "debug", label: "Debug", endpoint: "debug" },
   { id: "explain", label: "Explain", endpoint: "explain" },
@@ -28,6 +29,17 @@ const MODES: { id: AiMode; label: string; endpoint: string }[] = [
   { id: "architecture", label: "Architect", endpoint: "architecture" },
 ];
 
+export interface BuildFileChange {
+  path: string;
+  action: "create" | "update" | "delete";
+  content?: string;
+}
+export interface BuildResult {
+  summary?: string;
+  files: BuildFileChange[];
+  commands?: string[];
+}
+
 interface Props {
   projectId: string;
   activeFilePath?: string;
@@ -36,6 +48,7 @@ interface Props {
   getRecentErrors: () => string;
   applyToActiveFile: (code: string) => void;
   insertAtCursor: (code: string) => void;
+  applyBuildResult?: (result: BuildResult) => Promise<{ ok: number; failed: number }>;
   onClose: () => void;
 }
 
@@ -49,6 +62,7 @@ export default function AiPanel({
   getRecentErrors,
   applyToActiveFile,
   insertAtCursor,
+  applyBuildResult,
   onClose,
 }: Props) {
   const [mode, setMode] = useState<AiMode>("chat");
@@ -140,6 +154,8 @@ export default function AiPanel({
     } else if (mode === "architecture") {
       body.description = userText;
       body.autoScaffold = autoScaffold;
+    } else if (mode === "build") {
+      body.instruction = userText;
     }
 
     setMessages(prev => [...prev, { role: "user", content: userText }]);
@@ -225,6 +241,12 @@ export default function AiPanel({
         content = "```json\n" + JSON.stringify(data.plan, null, 2) + "\n```";
         if (Array.isArray(data.scaffolded) && data.scaffolded.length) {
           content += `\n\n_Scaffolded ${data.scaffolded.length} files._`;
+        }
+      }
+      if (mode === "build" && typeof content === "string") {
+        const parsed = parseBuildJson(content);
+        if (parsed) {
+          content = `__BUILD__${JSON.stringify(parsed)}`;
         }
       }
       setMessages(prev => [...prev, { role: "assistant", content: content || "(empty response)" }]);
@@ -316,14 +338,22 @@ export default function AiPanel({
             <p className="mt-1 opacity-70">{modeHint(mode)}</p>
           </div>
         )}
-        {messages.map((msg, i) => (
-          <MessageBubble
-            key={i}
-            message={msg}
-            onApply={applyToActiveFile}
-            onInsert={insertAtCursor}
-          />
-        ))}
+        {messages.map((msg, i) => {
+          if (msg.role === "assistant" && msg.content.startsWith("__BUILD__")) {
+            try {
+              const result = JSON.parse(msg.content.slice(9)) as BuildResult;
+              return <BuildResultCard key={i} result={result} onApply={applyBuildResult} />;
+            } catch {}
+          }
+          return (
+            <MessageBubble
+              key={i}
+              message={msg}
+              onApply={applyToActiveFile}
+              onInsert={insertAtCursor}
+            />
+          );
+        })}
         {loading && (
           <div className="flex justify-start">
             <div className="bg-muted/50 rounded-lg px-3 py-2 text-xs text-muted-foreground">
@@ -364,6 +394,7 @@ export default function AiPanel({
 function modeHint(mode: AiMode): string {
   switch (mode) {
     case "chat": return "Ask anything about your project.";
+    case "build": return "Describe a feature — AI plans & writes multiple files. Review and Apply.";
     case "generate": return "Describe code to generate.";
     case "debug": return "Paste an error or use recent terminal errors.";
     case "explain": return "Explains the active file.";
@@ -377,6 +408,7 @@ function modeHint(mode: AiMode): string {
 function inputPlaceholder(mode: AiMode): string {
   switch (mode) {
     case "chat": return "Ask AI...";
+    case "build": return "Add a dark mode toggle to the navbar...";
     case "generate": return "Generate a function that...";
     case "debug": return "What's wrong? (uses errors/code)";
     case "explain": return "Optional notes (uses active file)";
@@ -385,6 +417,73 @@ function inputPlaceholder(mode: AiMode): string {
     case "test": return "Optional notes (uses active file)";
     case "architecture": return "Describe what to build...";
   }
+}
+
+function parseBuildJson(text: string): BuildResult | null {
+  let s = text.trim();
+  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) s = fence[1].trim();
+  const start = s.indexOf("{");
+  const end = s.lastIndexOf("}");
+  if (start === -1 || end === -1) return null;
+  try {
+    const parsed = JSON.parse(s.slice(start, end + 1));
+    if (parsed && Array.isArray(parsed.files)) return parsed as BuildResult;
+  } catch {}
+  return null;
+}
+
+function BuildResultCard({ result, onApply }: { result: BuildResult; onApply?: (r: BuildResult) => Promise<{ ok: number; failed: number }> }) {
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [applying, setApplying] = useState(false);
+  const [applied, setApplied] = useState<{ ok: number; failed: number } | null>(null);
+  const toggle = (i: number) => setExpanded(prev => { const n = new Set(prev); if (n.has(i)) n.delete(i); else n.add(i); return n; });
+  const handleApply = async () => {
+    if (!onApply) return;
+    setApplying(true);
+    try { setApplied(await onApply(result)); } finally { setApplying(false); }
+  };
+  const iconFor = (a: string) => a === "create" ? <FilePlus className="w-3 h-3 text-green-400" /> : a === "delete" ? <FileX className="w-3 h-3 text-red-400" /> : <FileEdit className="w-3 h-3 text-blue-400" />;
+  return (
+    <div className="bg-muted/40 border border-primary/30 rounded-lg p-3 space-y-2">
+      <div className="flex items-center gap-2 text-xs">
+        <Sparkles className="w-3.5 h-3.5 text-primary" />
+        <span className="font-semibold">Build Plan · {result.files.length} file{result.files.length !== 1 ? "s" : ""}</span>
+      </div>
+      {result.summary && <div className="text-[11px] text-muted-foreground">{result.summary}</div>}
+      <div className="space-y-1">
+        {result.files.map((f, i) => (
+          <div key={i} className="border border-border/40 rounded">
+            <button onClick={() => toggle(i)} className="w-full flex items-center gap-1.5 px-2 py-1 text-[11px] hover:bg-accent/30">
+              {expanded.has(i) ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              {iconFor(f.action)}
+              <span className="font-mono truncate flex-1 text-left">{f.path}</span>
+              <span className="text-[9px] uppercase text-muted-foreground">{f.action}</span>
+            </button>
+            {expanded.has(i) && f.content && (
+              <pre className="bg-background/60 text-[10px] p-2 overflow-auto max-h-60 font-mono whitespace-pre">{f.content}</pre>
+            )}
+          </div>
+        ))}
+      </div>
+      {result.commands && result.commands.length > 0 && (
+        <div className="text-[10px] text-muted-foreground">
+          <div className="font-semibold mb-0.5">Suggested commands:</div>
+          {result.commands.map((c, i) => <div key={i} className="font-mono bg-background/40 px-1.5 py-0.5 rounded">{c}</div>)}
+        </div>
+      )}
+      {applied ? (
+        <div className={`text-[11px] px-2 py-1 rounded ${applied.failed ? "bg-yellow-500/10 text-yellow-400" : "bg-green-500/10 text-green-400"}`}>
+          ✓ Applied {applied.ok} file{applied.ok !== 1 ? "s" : ""}{applied.failed ? ` · ${applied.failed} failed` : ""}
+        </div>
+      ) : (
+        <Button size="sm" className="w-full h-7 text-xs gap-1" onClick={handleApply} disabled={applying || !onApply}>
+          {applying ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+          {applying ? "Applying..." : "Apply All Changes"}
+        </Button>
+      )}
+    </div>
+  );
 }
 
 function MessageBubble({

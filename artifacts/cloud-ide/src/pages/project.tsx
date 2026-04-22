@@ -2099,10 +2099,14 @@ export default function ProjectPage({ id }: { id: string }) {
                   <GitPanel projectId={id} files={files || []} />
                 )}
                 {activeSidebarTab === "secrets" && (
-                  <EnvEditor />
+                  <EnvEditor projectId={id} />
                 )}
                 {activeSidebarTab === "packages" && (
-                  <PackagesPanel />
+                  <PackagesPanel projectId={id} files={files || []} onShellCommand={(cmd) => {
+                    const session = `${id}::terminal::main`;
+                    socketIORef.current?.createTerminal?.(session, false);
+                    setTimeout(() => socketIORef.current?.sendTerminalInput?.(session, cmd + "\n"), 150);
+                  }} />
                 )}
                 {activeSidebarTab === "database" && (
                   <DatabaseViewer projectId={id} />
@@ -2291,6 +2295,44 @@ export default function ProjectPage({ id }: { id: string }) {
             const sel = editor.getSelection();
             if (!sel) return;
             editor.executeEdits("ai-insert", [{ range: sel, text: code, forceMoveMarkers: true }]);
+          }}
+          applyBuildResult={async (result) => {
+            let ok = 0, failed = 0;
+            for (const change of result.files) {
+              try {
+                const existing = (files || []).find(f => !f.isDirectory && (f.path === change.path || f.name === change.path));
+                if (change.action === "delete") {
+                  if (existing) await deleteFile.mutateAsync({ projectId: id, fileId: existing.id });
+                  ok++;
+                } else if (change.action === "update" && existing) {
+                  await updateFile.mutateAsync({ projectId: id, fileId: existing.id, data: { content: change.content || "" } });
+                  ok++;
+                } else {
+                  const segs = change.path.split("/");
+                  const name = segs.pop() || change.path;
+                  const path = segs.length ? segs.join("/") + "/" + name : name;
+                  if (existing) {
+                    await updateFile.mutateAsync({ projectId: id, fileId: existing.id, data: { content: change.content || "" } });
+                  } else {
+                    await createFile.mutateAsync({ projectId: id, data: { name, path, content: change.content || "", isDirectory: false } });
+                  }
+                  ok++;
+                }
+              } catch (e) {
+                console.error("[build] apply failed", change.path, e);
+                failed++;
+              }
+            }
+            queryClient.invalidateQueries({ queryKey: ["files", id] });
+            if (Array.isArray(result.commands) && result.commands.length > 0) {
+              const session = `${id}::terminal::main`;
+              socketIORef.current?.createTerminal?.(session, false);
+              for (const c of result.commands) {
+                setTimeout(() => socketIORef.current?.sendTerminalInput?.(session, c + "\n"), 200);
+              }
+            }
+            toast({ title: `Applied ${ok} change${ok !== 1 ? "s" : ""}`, description: failed ? `${failed} failed` : "Build complete", variant: failed ? "destructive" : "default" });
+            return { ok, failed };
           }}
           onClose={() => setShowAiChat(false)}
         />

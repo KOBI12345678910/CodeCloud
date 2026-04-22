@@ -220,7 +220,7 @@ import deploymentRegionRoutingRouter from "./deployment-region-routing";
 import jobQueueRouter from "./job-queue";
 import adminKpiRouter from "./admin-kpi";
 import auditLogRouter from "./audit-log";
-import twoFactorRouter from "./two-factor";
+// Legacy two-factor routes removed — replaced by secure /security/2fa/* endpoints
 import referralRouter from "./referral";
 import statusPageRouter from "./status-page";
 import changelogPageRouter from "./changelog-page";
@@ -302,9 +302,11 @@ import agentChatRouter from "./agent-chat";
 import mobileRouter from "./mobile";
 import buildhubRouter from "./buildhub";
 import bountiesRouter from "./bounties";
+import securityRouter from "./security";
 
 const router: IRouter = Router();
 
+router.use(securityRouter);
 router.use(authRouter);
 router.use(exportRouter);
 router.use(formatRouter);
@@ -526,7 +528,7 @@ router.use(deploymentRegionRoutingRouter);
 router.use(jobQueueRouter);
 router.use(adminKpiRouter);
 router.use(auditLogRouter);
-router.use(twoFactorRouter);
+// twoFactorRouter removed — use securityRouter for 2FA
 router.use(referralRouter);
 router.use(statusPageRouter);
 router.use(changelogPageRouter);

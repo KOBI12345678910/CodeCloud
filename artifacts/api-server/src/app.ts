@@ -9,6 +9,7 @@ import { corsMiddleware, helmetMiddleware, requestId, responseTime, noSniff } fr
 import { requestLogger } from "./middlewares/logging";
 import { generalLimiter } from "./middlewares/rateLimit";
 import { i18nMiddleware } from "./middlewares/i18n";
+import { auditMiddleware } from "./middlewares/auditMiddleware";
 
 const app: Express = express();
 
@@ -53,6 +54,7 @@ app.use(generalLimiter);
 app.use(i18nMiddleware);
 
 app.use(clerkMiddleware());
+app.use(auditMiddleware);
 
 app.get("/health", (_req, res) => {
   res.json({

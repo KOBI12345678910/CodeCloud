@@ -26,6 +26,9 @@ import { sendLocalizedError, localizedError } from "../lib/errors";
 import { RegisterSchema, LoginSchema, RefreshTokenSchema, ChangePasswordSchema, ForgotPasswordSchema, ResetPasswordSchema } from "../validators/schemas";
 import type { AuthenticatedRequest } from "../types";
 import { logAudit, getClientIp, getUserAgent } from "../services/audit";
+import { createSession } from "../services/sessions";
+import { recordLogin } from "../services/loginHistory";
+import { getUserTwoFactor, verifyTOTPToken, consumeBackupCode } from "../services/totp";
 
 const router: IRouter = Router();
 
@@ -182,6 +185,8 @@ router.post("/auth/login", async (req, res): Promise<void> => {
 
     await db.update(usersTable).set(updateData).where(eq(usersTable.id, user.id));
 
+    await recordLogin({ userId: user.id, success: false, method: "password", ipAddress: getClientIp(req), userAgent: getUserAgent(req), failReason: "invalid_password" });
+
     if (newAttempts >= MAX_FAILED_ATTEMPTS) {
       const { status, body } = localizedError(req, "errors.auth.lockedJustNow");
       res.status(status).json({ ...body, lockedUntil: (updateData.lockedUntil as Date).toISOString() });
@@ -191,6 +196,31 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     const { status, body } = localizedError(req, "errors.auth.invalidCredentials");
     res.status(status).json({ ...body, remainingAttempts: MAX_FAILED_ATTEMPTS - newAttempts });
     return;
+  }
+
+  const twoFa = await getUserTwoFactor(user.id);
+  if (twoFa?.enabled) {
+    const { totpToken, backupCode } = req.body;
+    if (!totpToken && !backupCode) {
+      res.status(200).json({
+        requires2FA: true,
+        message: "Two-factor authentication required. Please provide your TOTP code.",
+      });
+      return;
+    }
+
+    let twoFaValid = false;
+    if (totpToken) {
+      twoFaValid = verifyTOTPToken(twoFa.secret, totpToken);
+    } else if (backupCode) {
+      twoFaValid = await consumeBackupCode(user.id, backupCode);
+    }
+
+    if (!twoFaValid) {
+      await recordLogin({ userId: user.id, success: false, method: "password+2fa", ipAddress: getClientIp(req), userAgent: getUserAgent(req), failReason: "invalid_2fa" });
+      res.status(401).json({ error: "Invalid two-factor authentication code." });
+      return;
+    }
   }
 
   await db
@@ -209,12 +239,27 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     req.ip
   );
 
+  await createSession({
+    userId: user.id,
+    tokenFamily: family,
+    ipAddress: getClientIp(req),
+    userAgent: getUserAgent(req),
+  });
+
+  await recordLogin({
+    userId: user.id,
+    success: true,
+    method: twoFa?.enabled ? "password+2fa" : "password",
+    ipAddress: getClientIp(req),
+    userAgent: getUserAgent(req),
+  });
+
   logAudit({
     userId: user.id,
     action: "user.login",
     resourceType: "user",
     resourceId: user.id,
-    metadata: { email },
+    metadata: { email, twoFactor: twoFa?.enabled ?? false },
     ipAddress: getClientIp(req),
     userAgent: getUserAgent(req),
     correlationId: req.headers["x-request-id"] as string,

@@ -168,6 +168,9 @@ function ClerkProviderWithRoutes() {
                 </Show>
               )}
             </Route>
+            <Route path="/workspace/:id">
+              {(params) => <ProjectPage id={params.id} />}
+            </Route>
             <Route path="/explore" component={ExplorePage} />
             <Route path="/pricing" component={PricingPage} />
             <Route path="/settings">

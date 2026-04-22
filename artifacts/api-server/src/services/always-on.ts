@@ -126,6 +126,32 @@ export class AlwaysOnService {
     }
   }
 
+  async updateConfig(projectId: string, options: {
+    healthUrl?: string;
+    bootCommand?: string;
+    restartPolicy?: "always" | "on-failure" | "never";
+    maxRestarts?: number;
+  }): Promise<AlwaysOnConfig> {
+    await db.execute(sql`
+      UPDATE projects SET
+        always_on_health_url = COALESCE(${options.healthUrl ?? null}, always_on_health_url),
+        always_on_boot_command = COALESCE(${options.bootCommand ?? null}, always_on_boot_command),
+        always_on_restart_policy = COALESCE(${options.restartPolicy ?? null}, always_on_restart_policy),
+        always_on_max_restarts = COALESCE(${options.maxRestarts ?? null}, always_on_max_restarts),
+        updated_at = NOW()
+      WHERE id = ${projectId}
+    `);
+    return this.getConfig(projectId);
+  }
+
+  async resetRestarts(projectId: string): Promise<void> {
+    await db.execute(sql`
+      UPDATE projects SET always_on_restart_count = 0, updated_at = NOW()
+      WHERE id = ${projectId}
+    `);
+    logger.info(`Always-On restart count reset for project ${projectId}`);
+  }
+
   async shutdown(): Promise<void> {
     if (this.healthCheckInterval) {
       clearInterval(this.healthCheckInterval);

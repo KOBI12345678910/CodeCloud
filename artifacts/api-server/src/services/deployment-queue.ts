@@ -6,7 +6,7 @@ import { createConnection } from "node:net";
 import { generateDockerfile, allocateResources, type FileEntry, type ResourceTier } from "./dockerfile-generator";
 import { getIO } from "../websocket/socketio";
 import { logger } from "../lib/logger";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 interface FileSnapshotEntry {
   path: string;
@@ -60,20 +60,56 @@ async function ensureLocalRedis(): Promise<boolean> {
   return false;
 }
 
-async function buildConnection(): Promise<ConnectionOptions> {
-  const reachable = await ensureLocalRedis();
-  if (reachable) {
-    logger.info(`[deployment-queue] using real Redis at ${REDIS_HOST}:${REDIS_PORT}`);
-    return { host: REDIS_HOST, port: REDIS_PORT, maxRetriesPerRequest: null };
-  }
-  logger.warn("[deployment-queue] Redis unavailable; falling back to ioredis-mock (development only)");
-  const IORedisMock = (await import("ioredis-mock")).default;
-  return new IORedisMock() as unknown as ConnectionOptions;
+const REDIS_REACHABLE = await ensureLocalRedis();
+
+interface QueueLike {
+  add(name: string, data: DeployJobData, opts?: { jobId?: string }): Promise<{ id: string }>;
+  getJobCounts(...states: string[]): Promise<Record<string, number>>;
 }
 
-const connection: ConnectionOptions = await buildConnection();
+const inMemCounts = { waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 } as Record<string, number>;
 
-export const deploymentQueue = new Queue<DeployJobData>(QUEUE_NAME, { connection });
+function makeInMemoryQueue(): QueueLike {
+  return {
+    async add(_name, data, opts) {
+      const id = opts?.jobId || randomUUID();
+      const fakeJob = { id, data } as unknown as Job<DeployJobData>;
+      inMemCounts.active++;
+      setImmediate(async () => {
+        try {
+          await runBuild(fakeJob);
+          inMemCounts.active--;
+          inMemCounts.completed++;
+        } catch (err: any) {
+          inMemCounts.active--;
+          inMemCounts.failed++;
+          const msg = err?.message || String(err);
+          logger.error({ err, deploymentId: data.deploymentId }, "Deployment build failed (inmem)");
+          try {
+            await db.update(deploymentsTable)
+              .set({ status: "failed", errorLog: msg, completedAt: new Date() })
+              .where(eq(deploymentsTable.id, data.deploymentId));
+            emitLog(data.deploymentId, `ERROR: ${msg}`);
+            emitStatus(data.deploymentId, "failed", { error: msg });
+          } catch {}
+        }
+      });
+      return { id };
+    },
+    async getJobCounts(...states) {
+      const out: Record<string, number> = {};
+      for (const s of states) out[s] = inMemCounts[s] || 0;
+      return out;
+    },
+  };
+}
+
+let _bullWorker: Worker<DeployJobData> | null = null;
+export const deploymentQueue: QueueLike = REDIS_REACHABLE
+  ? new Queue<DeployJobData>(QUEUE_NAME, {
+      connection: { host: REDIS_HOST, port: REDIS_PORT, maxRetriesPerRequest: null },
+    }) as unknown as QueueLike
+  : (logger.info("[deployment-queue] Redis unavailable — using in-process queue (no BullMQ)"), makeInMemoryQueue());
 
 const logsByDeployment = new Map<string, string[]>();
 
@@ -267,27 +303,32 @@ async function runBuild(job: Job<DeployJobData>): Promise<void> {
   emitStatus(deploymentId, "live", { url, duration });
 }
 
-export const deploymentWorker = new Worker<DeployJobData>(
-  QUEUE_NAME,
-  async (job) => {
-    try {
-      await runBuild(job);
-    } catch (err: any) {
-      const msg = err?.message || String(err);
-      logger.error({ err, deploymentId: job.data.deploymentId }, "Deployment build failed");
-      try {
-        await db.update(deploymentsTable)
-          .set({ status: "failed", errorLog: msg, completedAt: new Date() })
-          .where(eq(deploymentsTable.id, job.data.deploymentId));
-        emitLog(job.data.deploymentId, `ERROR: ${msg}`);
-        emitStatus(job.data.deploymentId, "failed", { error: msg });
-      } catch {}
-      throw err;
-    }
-  },
-  { connection, concurrency: 2 },
-);
+export const deploymentWorker: Worker<DeployJobData> | null = REDIS_REACHABLE
+  ? new Worker<DeployJobData>(
+      QUEUE_NAME,
+      async (job) => {
+        try {
+          await runBuild(job);
+        } catch (err: any) {
+          const msg = err?.message || String(err);
+          logger.error({ err, deploymentId: job.data.deploymentId }, "Deployment build failed");
+          try {
+            await db.update(deploymentsTable)
+              .set({ status: "failed", errorLog: msg, completedAt: new Date() })
+              .where(eq(deploymentsTable.id, job.data.deploymentId));
+            emitLog(job.data.deploymentId, `ERROR: ${msg}`);
+            emitStatus(job.data.deploymentId, "failed", { error: msg });
+          } catch {}
+          throw err;
+        }
+      },
+      { connection: { host: REDIS_HOST, port: REDIS_PORT, maxRetriesPerRequest: null }, concurrency: 2 },
+    )
+  : null;
 
-deploymentWorker.on("ready", () => {
-  logger.info(`[deployment-queue] BullMQ worker ready (redis: ${REDIS_HOST}:${REDIS_PORT})`);
-});
+if (deploymentWorker) {
+  deploymentWorker.on("ready", () => {
+    logger.info(`[deployment-queue] BullMQ worker ready (redis: ${REDIS_HOST}:${REDIS_PORT})`);
+  });
+}
+void _bullWorker;

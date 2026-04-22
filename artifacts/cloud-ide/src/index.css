@@ -167,8 +167,12 @@
   }
 }
 
+html,
+body {
+  background-color: #0a0a0b;
+}
 html {
-  color-scheme: light;
+  color-scheme: dark;
 }
 html.dark {
   color-scheme: dark;

@@ -1,0 +1,12 @@
+import { Router, Request, Response } from "express";
+import { exploreSocialService } from "../services/explore-social";
+const router = Router();
+router.get("/explore-social/trending", (req: Request, res: Response): void => { res.json(exploreSocialService.getTrending(Number(req.query.limit) || 20)); });
+router.get("/explore-social/search", (req: Request, res: Response): void => { res.json(exploreSocialService.search(req.query.q as string || "", req.query.language as string)); });
+router.get("/explore-social/language/:language", (req: Request, res: Response): void => { res.json(exploreSocialService.getByLanguage(req.params.language as string)); });
+router.get("/explore-social/tag/:tag", (req: Request, res: Response): void => { res.json(exploreSocialService.getByTag(req.params.tag as string)); });
+router.post("/explore-social", (req: Request, res: Response): void => { res.status(201).json(exploreSocialService.addProject(req.body)); });
+router.post("/explore-social/:id/star", (req: Request, res: Response): void => { exploreSocialService.star(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.post("/explore-social/:id/unstar", (req: Request, res: Response): void => { exploreSocialService.unstar(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.post("/explore-social/:id/fork", (req: Request, res: Response): void => { const f = exploreSocialService.fork(req.params.id as string); f ? res.json(f) : res.status(404).json({ error: "Not found" }); });
+export default router;

@@ -1,0 +1,12 @@
+import { Router, Request, Response } from "express";
+import { teamManagementService } from "../services/team-management";
+const router = Router();
+router.get("/team-management", (req: Request, res: Response): void => { res.json(teamManagementService.list(req.query.userId as string)); });
+router.post("/team-management", (req: Request, res: Response): void => { res.status(201).json(teamManagementService.create(req.body)); });
+router.get("/team-management/:id", (req: Request, res: Response): void => { const t = teamManagementService.get(req.params.id as string); t ? res.json(t) : res.status(404).json({ error: "Not found" }); });
+router.get("/team-management/slug/:slug", (req: Request, res: Response): void => { const t = teamManagementService.getBySlug(req.params.slug as string); t ? res.json(t) : res.status(404).json({ error: "Not found" }); });
+router.post("/team-management/:id/members", (req: Request, res: Response): void => { const t = teamManagementService.addMember(req.params.id as string, req.body.userId, req.body.userName, req.body.role); t ? res.json(t) : res.status(404).json({ error: "Not found" }); });
+router.delete("/team-management/:id/members/:userId", (req: Request, res: Response): void => { teamManagementService.removeMember(req.params.id as string, req.params.userId as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.put("/team-management/:id/members/:userId/role", (req: Request, res: Response): void => { teamManagementService.updateRole(req.params.id as string, req.params.userId as string, req.body.role) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.delete("/team-management/:id", (req: Request, res: Response): void => { teamManagementService.delete(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

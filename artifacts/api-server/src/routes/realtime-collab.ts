@@ -1,0 +1,13 @@
+import { Router, Request, Response } from "express";
+import { realtimeCollabService } from "../services/realtime-collab";
+const router = Router();
+router.post("/realtime-collab/sessions", (req: Request, res: Response): void => { res.status(201).json(realtimeCollabService.createSession(req.body.projectId)); });
+router.get("/realtime-collab/sessions/:id", (req: Request, res: Response): void => { const s = realtimeCollabService.getSession(req.params.id as string); s ? res.json(s) : res.status(404).json({ error: "Not found" }); });
+router.get("/realtime-collab/project/:projectId", (req: Request, res: Response): void => { const s = realtimeCollabService.getSessionByProject(req.params.projectId as string); s ? res.json(s) : res.status(404).json({ error: "No session" }); });
+router.post("/realtime-collab/sessions/:id/join", (req: Request, res: Response): void => { const s = realtimeCollabService.joinSession(req.params.id as string, req.body.userId, req.body.userName); s ? res.json(s) : res.status(404).json({ error: "Not found" }); });
+router.post("/realtime-collab/sessions/:id/leave", (req: Request, res: Response): void => { realtimeCollabService.leaveSession(req.params.id as string, req.body.userId) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.post("/realtime-collab/sessions/:id/cursor", (req: Request, res: Response): void => { const { userId, file, line, column } = req.body; realtimeCollabService.updateCursor(req.params.id as string, userId, file, line, column) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.post("/realtime-collab/edit", (req: Request, res: Response): void => { res.json(realtimeCollabService.applyEdit(req.body)); });
+router.get("/realtime-collab/sessions/:id/edits", (req: Request, res: Response): void => { res.json(realtimeCollabService.getEdits(req.params.id as string, Number(req.query.limit) || 100)); });
+router.delete("/realtime-collab/sessions/:id", (req: Request, res: Response): void => { realtimeCollabService.endSession(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

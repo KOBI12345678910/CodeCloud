@@ -1,0 +1,11 @@
+import { Router, Request, Response } from "express";
+import { webhookSystemService } from "../services/webhook-system";
+const router = Router();
+router.get("/webhook-system/project/:projectId", (req: Request, res: Response): void => { res.json(webhookSystemService.listByProject(req.params.projectId as string)); });
+router.post("/webhook-system", (req: Request, res: Response): void => { res.status(201).json(webhookSystemService.create(req.body)); });
+router.get("/webhook-system/:id", (req: Request, res: Response): void => { const w = webhookSystemService.get(req.params.id as string); w ? res.json(w) : res.status(404).json({ error: "Not found" }); });
+router.put("/webhook-system/:id", (req: Request, res: Response): void => { const w = webhookSystemService.update(req.params.id as string, req.body); w ? res.json(w) : res.status(404).json({ error: "Not found" }); });
+router.post("/webhook-system/:id/trigger", (req: Request, res: Response): void => { const d = webhookSystemService.trigger(req.params.id as string, req.body.event, req.body.payload); d ? res.json(d) : res.status(404).json({ error: "Not found or inactive" }); });
+router.get("/webhook-system/:id/deliveries", (req: Request, res: Response): void => { res.json(webhookSystemService.getDeliveries(req.params.id as string)); });
+router.delete("/webhook-system/:id", (req: Request, res: Response): void => { webhookSystemService.delete(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

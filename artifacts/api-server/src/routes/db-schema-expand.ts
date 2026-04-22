@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { dbSchemaExpandService } from "../services/db-schema-expand";
+const router = Router();
+router.get("/db-schema-expand/tables", (_req: Request, res: Response): void => { res.json(dbSchemaExpandService.getTables()); });
+router.get("/db-schema-expand/tables/:name", (req: Request, res: Response): void => { const t = dbSchemaExpandService.getTable(req.params.name as string); t ? res.json(t) : res.status(404).json({ error: "Not found" }); });
+router.get("/db-schema-expand/sql", (_req: Request, res: Response): void => { res.type("text/plain").send(dbSchemaExpandService.getSchemaSQL()); });
+router.post("/db-schema-expand/migrations", (req: Request, res: Response): void => { res.status(201).json(dbSchemaExpandService.generateMigration(req.body.name, req.body.changes || {})); });
+router.get("/db-schema-expand/migrations", (_req: Request, res: Response): void => { res.json(dbSchemaExpandService.getMigrations()); });
+router.post("/db-schema-expand/migrations/:id/apply", (req: Request, res: Response): void => { const m = dbSchemaExpandService.applyMigration(req.params.id as string); m ? res.json(m) : res.status(404).json({ error: "Not found" }); });
+export default router;

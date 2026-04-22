@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { rateLimitDashboardService } from "../services/rate-limit-dashboard";
+const router = Router();
+router.get("/rate-limit-dashboard", (_req: Request, res: Response): void => { res.json(rateLimitDashboardService.getDashboard()); });
+router.get("/rate-limit-dashboard/metrics", (_req: Request, res: Response): void => { res.json(rateLimitDashboardService.getMetrics()); });
+router.get("/rate-limit-dashboard/configs", (_req: Request, res: Response): void => { res.json(rateLimitDashboardService.getConfigs()); });
+router.post("/rate-limit-dashboard/configs", (req: Request, res: Response): void => { res.status(201).json(rateLimitDashboardService.setConfig(req.body)); });
+router.delete("/rate-limit-dashboard/configs", (req: Request, res: Response): void => { const { method, endpoint } = req.body; rateLimitDashboardService.deleteConfig(method, endpoint) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.post("/rate-limit-dashboard/record", (req: Request, res: Response): void => { const { method, endpoint } = req.body; res.json(rateLimitDashboardService.recordRequest(method, endpoint)); });
+export default router;

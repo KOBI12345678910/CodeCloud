@@ -1,0 +1,11 @@
+import { Router, Request, Response } from "express";
+import { issueTrackerService } from "../services/issue-tracker";
+const router = Router();
+router.get("/issue-tracker/:projectId", (req: Request, res: Response): void => { res.json(issueTrackerService.list(req.params.projectId as string, req.query.status as any)); });
+router.get("/issue-tracker/:projectId/stats", (req: Request, res: Response): void => { res.json(issueTrackerService.getStats(req.params.projectId as string)); });
+router.post("/issue-tracker", (req: Request, res: Response): void => { res.status(201).json(issueTrackerService.create(req.body)); });
+router.get("/issue-tracker/issue/:id", (req: Request, res: Response): void => { const i = issueTrackerService.get(req.params.id as string); i ? res.json(i) : res.status(404).json({ error: "Not found" }); });
+router.put("/issue-tracker/:id", (req: Request, res: Response): void => { const i = issueTrackerService.update(req.params.id as string, req.body); i ? res.json(i) : res.status(404).json({ error: "Not found" }); });
+router.post("/issue-tracker/:id/comments", (req: Request, res: Response): void => { const i = issueTrackerService.addComment(req.params.id as string, req.body.userId, req.body.text); i ? res.json(i) : res.status(404).json({ error: "Not found" }); });
+router.delete("/issue-tracker/:id", (req: Request, res: Response): void => { issueTrackerService.delete(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

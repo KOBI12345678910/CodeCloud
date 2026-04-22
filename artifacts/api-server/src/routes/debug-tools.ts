@@ -1,0 +1,11 @@
+import { Router, Request, Response } from "express";
+import { debugToolsService } from "../services/debug-tools";
+const router = Router();
+router.get("/debug-tools", (_req: Request, res: Response): void => { res.json(debugToolsService.listSessions()); });
+router.post("/debug-tools", (req: Request, res: Response): void => { res.status(201).json(debugToolsService.startSession(req.body.containerId)); });
+router.get("/debug-tools/:id", (req: Request, res: Response): void => { const s = debugToolsService.getSession(req.params.id as string); s ? res.json(s) : res.status(404).json({ error: "Not found" }); });
+router.post("/debug-tools/:id/breakpoints", (req: Request, res: Response): void => { const bp = debugToolsService.addBreakpoint(req.params.id as string, req.body.file, req.body.line, req.body.condition); bp ? res.status(201).json(bp) : res.status(404).json({ error: "Session not found" }); });
+router.delete("/debug-tools/:sessionId/breakpoints/:bpId", (req: Request, res: Response): void => { debugToolsService.removeBreakpoint(req.params.sessionId as string, req.params.bpId as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.post("/debug-tools/:id/evaluate", (req: Request, res: Response): void => { const r = debugToolsService.evaluate(req.params.id as string, req.body.expression); r ? res.json(r) : res.status(404).json({ error: "Session not found" }); });
+router.post("/debug-tools/:id/end", (req: Request, res: Response): void => { debugToolsService.endSession(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

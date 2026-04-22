@@ -1,0 +1,12 @@
+import { Router, Request, Response } from "express";
+import { extensionsApiService } from "../services/extensions-api";
+const router = Router();
+router.get("/extensions", (req: Request, res: Response): void => { res.json(extensionsApiService.list(req.query.category as any)); });
+router.get("/extensions/api", (_req: Request, res: Response): void => { res.json(extensionsApiService.getAPI()); });
+router.post("/extensions", (req: Request, res: Response): void => { res.status(201).json(extensionsApiService.install(req.body)); });
+router.get("/extensions/:id", (req: Request, res: Response): void => { const e = extensionsApiService.get(req.params.id as string); e ? res.json(e) : res.status(404).json({ error: "Not found" }); });
+router.delete("/extensions/:id", (req: Request, res: Response): void => { extensionsApiService.uninstall(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.post("/extensions/:id/enable", (req: Request, res: Response): void => { extensionsApiService.enable(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.post("/extensions/:id/disable", (req: Request, res: Response): void => { extensionsApiService.disable(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.put("/extensions/:id/config", (req: Request, res: Response): void => { const e = extensionsApiService.configure(req.params.id as string, req.body); e ? res.json(e) : res.status(404).json({ error: "Not found" }); });
+export default router;

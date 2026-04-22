@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { logStreamingService } from "../services/log-streaming";
+const router = Router();
+router.get("/log-streaming/project/:projectId", (req: Request, res: Response): void => { res.json(logStreamingService.listStreams(req.params.projectId as string)); });
+router.post("/log-streaming", (req: Request, res: Response): void => { res.status(201).json(logStreamingService.createStream(req.body)); });
+router.get("/log-streaming/:id", (req: Request, res: Response): void => { const s = logStreamingService.getStream(req.params.id as string); s ? res.json(s) : res.status(404).json({ error: "Not found" }); });
+router.post("/log-streaming/:id/log", (req: Request, res: Response): void => { const e = logStreamingService.log(req.params.id as string, req.body.level, req.body.message, req.body.metadata); e ? res.json(e) : res.status(404).json({ error: "Not found or inactive" }); });
+router.get("/log-streaming/:id/entries", (req: Request, res: Response): void => { res.json(logStreamingService.getEntries(req.params.id as string, Number(req.query.limit) || 100, req.query.level as string)); });
+router.post("/log-streaming/:id/toggle", (req: Request, res: Response): void => { const s = logStreamingService.toggleStream(req.params.id as string); s ? res.json(s) : res.status(404).json({ error: "Not found" }); });
+export default router;

@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { twoFactorService } from "../services/two-factor";
+const router = Router();
+router.post("/two-factor/setup", (req: Request, res: Response): void => { res.json(twoFactorService.setup(req.body.userId, req.body.method)); });
+router.post("/two-factor/verify", (req: Request, res: Response): void => { const ok = twoFactorService.verify(req.body.userId, req.body.code); res.json({ verified: ok }); });
+router.post("/two-factor/validate", (req: Request, res: Response): void => { const ok = twoFactorService.validate(req.body.userId, req.body.code); res.json({ valid: ok }); });
+router.post("/two-factor/disable", (req: Request, res: Response): void => { twoFactorService.disable(req.body.userId) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.get("/two-factor/:userId/status", (req: Request, res: Response): void => { res.json(twoFactorService.getStatus(req.params.userId as string)); });
+router.post("/two-factor/:userId/backup-codes", (req: Request, res: Response): void => { const codes = twoFactorService.regenerateBackupCodes(req.params.userId as string); codes ? res.json({ codes }) : res.status(404).json({ error: "Not found" }); });
+export default router;

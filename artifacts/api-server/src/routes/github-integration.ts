@@ -1,0 +1,12 @@
+import { Router, Request, Response } from "express";
+import { githubIntegrationService } from "../services/github-integration";
+const router = Router();
+router.get("/github-integration", (_req: Request, res: Response): void => { res.json(githubIntegrationService.list()); });
+router.get("/github-integration/repos", (_req: Request, res: Response): void => { res.json(githubIntegrationService.listRepos()); });
+router.post("/github-integration/connect", (req: Request, res: Response): void => { const { projectId, repoFullName, branch, direction } = req.body; res.status(201).json(githubIntegrationService.connect(projectId, repoFullName, branch, direction)); });
+router.get("/github-integration/:id", (req: Request, res: Response): void => { const s = githubIntegrationService.get(req.params.id as string); s ? res.json(s) : res.status(404).json({ error: "Not found" }); });
+router.get("/github-integration/project/:projectId", (req: Request, res: Response): void => { const s = githubIntegrationService.getByProject(req.params.projectId as string); s ? res.json(s) : res.status(404).json({ error: "Not connected" }); });
+router.post("/github-integration/:id/sync", (req: Request, res: Response): void => { const s = githubIntegrationService.sync(req.params.id as string); s ? res.json(s) : res.status(404).json({ error: "Not found" }); });
+router.post("/github-integration/:id/disconnect", (req: Request, res: Response): void => { githubIntegrationService.disconnect(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.post("/github-integration/:id/pr", (req: Request, res: Response): void => { const r = githubIntegrationService.createPR(req.params.id as string, req.body.title, req.body.description, req.body.branch); r ? res.json(r) : res.status(404).json({ error: "Not found" }); });
+export default router;

@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { multiRegionService } from "../services/multi-region";
+const router = Router();
+router.get("/multi-region/regions", (_req: Request, res: Response): void => { res.json(multiRegionService.getRegions()); });
+router.get("/multi-region/regions/:id", (req: Request, res: Response): void => { const r = multiRegionService.getRegion(req.params.id as string); r ? res.json(r) : res.status(404).json({ error: "Not found" }); });
+router.get("/multi-region/deployments", (req: Request, res: Response): void => { res.json(multiRegionService.getDeployments(req.query.projectId as string)); });
+router.post("/multi-region/deployments", (req: Request, res: Response): void => { const { projectId, regions, primaryRegion, strategy } = req.body; res.status(201).json(multiRegionService.deploy(projectId, regions, primaryRegion, strategy)); });
+router.get("/multi-region/deployments/:id", (req: Request, res: Response): void => { const d = multiRegionService.getDeployment(req.params.id as string); d ? res.json(d) : res.status(404).json({ error: "Not found" }); });
+router.delete("/multi-region/deployments/:id", (req: Request, res: Response): void => { multiRegionService.deleteDeployment(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

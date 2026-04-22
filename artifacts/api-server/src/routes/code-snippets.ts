@@ -1,0 +1,11 @@
+import { Router, Request, Response } from "express";
+import { codeSnippetsService } from "../services/code-snippets";
+const router = Router();
+router.get("/code-snippets", (req: Request, res: Response): void => { res.json(codeSnippetsService.list(req.query.projectId as string, req.query.language as string)); });
+router.post("/code-snippets", (req: Request, res: Response): void => { res.status(201).json(codeSnippetsService.create(req.body)); });
+router.get("/code-snippets/search", (req: Request, res: Response): void => { res.json(codeSnippetsService.search(req.query.q as string || "")); });
+router.get("/code-snippets/:id", (req: Request, res: Response): void => { const s = codeSnippetsService.get(req.params.id as string); s ? res.json(s) : res.status(404).json({ error: "Not found" }); });
+router.put("/code-snippets/:id", (req: Request, res: Response): void => { const s = codeSnippetsService.update(req.params.id as string, req.body); s ? res.json(s) : res.status(404).json({ error: "Not found" }); });
+router.delete("/code-snippets/:id", (req: Request, res: Response): void => { codeSnippetsService.delete(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.post("/code-snippets/:id/like", (req: Request, res: Response): void => { codeSnippetsService.like(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

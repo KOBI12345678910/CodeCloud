@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { statusIncidentsService } from "../services/status-incidents";
+const router = Router();
+router.get("/status-incidents", (req: Request, res: Response): void => { res.json(statusIncidentsService.list(req.query.status as any)); });
+router.get("/status-incidents/status", (_req: Request, res: Response): void => { res.json(statusIncidentsService.getStatus()); });
+router.post("/status-incidents", (req: Request, res: Response): void => { res.status(201).json(statusIncidentsService.create(req.body)); });
+router.get("/status-incidents/:id", (req: Request, res: Response): void => { const i = statusIncidentsService.get(req.params.id as string); i ? res.json(i) : res.status(404).json({ error: "Not found" }); });
+router.post("/status-incidents/:id/update", (req: Request, res: Response): void => { const i = statusIncidentsService.addUpdate(req.params.id as string, req.body.status, req.body.message); i ? res.json(i) : res.status(404).json({ error: "Not found" }); });
+router.delete("/status-incidents/:id", (req: Request, res: Response): void => { statusIncidentsService.delete(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

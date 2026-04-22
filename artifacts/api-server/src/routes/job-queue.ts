@@ -1,0 +1,12 @@
+import { Router, Request, Response } from "express";
+import { jobQueueService } from "../services/job-queue";
+const router = Router();
+router.get("/job-queue", (req: Request, res: Response): void => { res.json(jobQueueService.listJobs(req.query.queue as string, req.query.status as any)); });
+router.get("/job-queue/stats", (_req: Request, res: Response): void => { res.json(jobQueueService.getQueueStats()); });
+router.post("/job-queue", (req: Request, res: Response): void => { const { queue, name, data, priority, maxAttempts } = req.body; res.status(201).json(jobQueueService.addJob(queue || "default", name, data, priority, maxAttempts)); });
+router.get("/job-queue/:id", (req: Request, res: Response): void => { const j = jobQueueService.getJob(req.params.id as string); j ? res.json(j) : res.status(404).json({ error: "Not found" }); });
+router.post("/job-queue/:id/process", (req: Request, res: Response): void => { const j = jobQueueService.processJob(req.params.id as string); j ? res.json(j) : res.status(404).json({ error: "Not found" }); });
+router.post("/job-queue/:queue/retry-failed", (req: Request, res: Response): void => { res.json({ retried: jobQueueService.retryFailed(req.params.queue as string) }); });
+router.delete("/job-queue/:queue/purge/:status", (req: Request, res: Response): void => { res.json({ purged: jobQueueService.purge(req.params.queue as string, req.params.status as any) }); });
+router.delete("/job-queue/:id", (req: Request, res: Response): void => { jobQueueService.removeJob(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

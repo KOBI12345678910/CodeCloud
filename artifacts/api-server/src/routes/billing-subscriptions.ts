@@ -1,0 +1,11 @@
+import { Router, Request, Response } from "express";
+import { billingSubscriptionsService } from "../services/billing-subscriptions";
+const router = Router();
+router.get("/billing-subscriptions/:userId", (req: Request, res: Response): void => { const s = billingSubscriptionsService.getByUser(req.params.userId as string); s ? res.json(s) : res.status(404).json({ error: "No subscription" }); });
+router.post("/billing-subscriptions", (req: Request, res: Response): void => { res.status(201).json(billingSubscriptionsService.subscribe(req.body.userId, req.body.plan)); });
+router.post("/billing-subscriptions/:id/cancel", (req: Request, res: Response): void => { const s = billingSubscriptionsService.cancel(req.params.id as string); s ? res.json(s) : res.status(404).json({ error: "Not found" }); });
+router.put("/billing-subscriptions/:id/plan", (req: Request, res: Response): void => { const s = billingSubscriptionsService.changePlan(req.params.id as string, req.body.plan); s ? res.json(s) : res.status(404).json({ error: "Not found" }); });
+router.get("/billing-subscriptions/:userId/invoices", (req: Request, res: Response): void => { res.json(billingSubscriptionsService.getInvoices(req.params.userId as string)); });
+router.post("/billing-subscriptions/:userId/usage", (req: Request, res: Response): void => { res.json(billingSubscriptionsService.recordUsage(req.params.userId as string, req.body.metric, req.body.value)); });
+router.get("/billing-subscriptions/:userId/usage", (req: Request, res: Response): void => { res.json(billingSubscriptionsService.getUsage(req.params.userId as string, req.query.metric as string)); });
+export default router;

@@ -1,0 +1,12 @@
+import { Router, Request, Response } from "express";
+import { notificationSystemService } from "../services/notification-system";
+const router = Router();
+router.get("/notification-system/:userId", (req: Request, res: Response): void => { res.json(notificationSystemService.list(req.params.userId as string, req.query.unread === "true")); });
+router.get("/notification-system/:userId/count", (req: Request, res: Response): void => { res.json({ unread: notificationSystemService.getUnreadCount(req.params.userId as string) }); });
+router.post("/notification-system", (req: Request, res: Response): void => { const { userId, ...data } = req.body; res.status(201).json(notificationSystemService.send(userId, data)); });
+router.post("/notification-system/:userId/read/:notifId", (req: Request, res: Response): void => { notificationSystemService.markRead(req.params.userId as string, req.params.notifId as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.post("/notification-system/:userId/read-all", (req: Request, res: Response): void => { res.json({ marked: notificationSystemService.markAllRead(req.params.userId as string) }); });
+router.get("/notification-system/:userId/preferences", (req: Request, res: Response): void => { res.json(notificationSystemService.getPreferences(req.params.userId as string)); });
+router.put("/notification-system/:userId/preferences", (req: Request, res: Response): void => { res.json(notificationSystemService.setPreferences(req.params.userId as string, req.body)); });
+router.delete("/notification-system/:userId/:notifId", (req: Request, res: Response): void => { notificationSystemService.delete(req.params.userId as string, req.params.notifId as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

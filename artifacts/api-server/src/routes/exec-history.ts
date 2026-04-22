@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { execHistoryService } from "../services/exec-history";
+const router = Router();
+router.get("/exec-history", (req: Request, res: Response): void => { res.json(execHistoryService.list(req.query.containerId as string, Number(req.query.limit) || 50)); });
+router.get("/exec-history/:id", (req: Request, res: Response): void => { const e = execHistoryService.get(req.params.id as string); e ? res.json(e) : res.status(404).json({ error: "Not found" }); });
+router.post("/exec-history", (req: Request, res: Response): void => { const { containerId, command, exitCode, stdout, stderr, duration, user } = req.body; res.status(201).json(execHistoryService.record(containerId, command, exitCode || 0, stdout || "", stderr || "", duration || 0, user)); });
+router.get("/exec-history/stats/:containerId", (req: Request, res: Response): void => { res.json(execHistoryService.getStats(req.params.containerId as string)); });
+router.post("/exec-history/search", (req: Request, res: Response): void => { res.json(execHistoryService.search(req.body.query || "")); });
+router.delete("/exec-history/:containerId/clear", (req: Request, res: Response): void => { res.json({ cleared: execHistoryService.clear(req.params.containerId as string) }); });
+export default router;

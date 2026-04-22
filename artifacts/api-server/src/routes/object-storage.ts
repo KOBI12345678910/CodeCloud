@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { objectStorageService } from "../services/object-storage";
+const router = Router();
+router.get("/object-storage/buckets/:projectId", (req: Request, res: Response): void => { res.json(objectStorageService.listBuckets(req.params.projectId as string)); });
+router.post("/object-storage/buckets", (req: Request, res: Response): void => { res.status(201).json(objectStorageService.createBucket(req.body)); });
+router.get("/object-storage/buckets/:id/info", (req: Request, res: Response): void => { const b = objectStorageService.getBucket(req.params.id as string); b ? res.json(b) : res.status(404).json({ error: "Not found" }); });
+router.post("/object-storage/buckets/:bucketId/objects", (req: Request, res: Response): void => { const o = objectStorageService.putObject(req.params.bucketId as string, req.body.key, req.body.size, req.body.contentType); o ? res.json(o) : res.status(404).json({ error: "Bucket not found" }); });
+router.get("/object-storage/buckets/:bucketId/objects", (req: Request, res: Response): void => { res.json(objectStorageService.listObjects(req.params.bucketId as string, req.query.prefix as string)); });
+router.delete("/object-storage/buckets/:id", (req: Request, res: Response): void => { objectStorageService.deleteBucket(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

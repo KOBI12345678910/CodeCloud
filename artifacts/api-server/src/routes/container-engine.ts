@@ -1,0 +1,14 @@
+import { Router, Request, Response } from "express";
+import { containerEngineService } from "../services/container-engine";
+const router = Router();
+router.get("/container-engine", (_req: Request, res: Response): void => { res.json(containerEngineService.list()); });
+router.post("/container-engine", (req: Request, res: Response): void => { res.status(201).json(containerEngineService.create(req.body)); });
+router.get("/container-engine/:id", (req: Request, res: Response): void => { const c = containerEngineService.get(req.params.id as string); c ? res.json(c) : res.status(404).json({ error: "Not found" }); });
+router.post("/container-engine/:id/start", (req: Request, res: Response): void => { const c = containerEngineService.start(req.params.id as string); c ? res.json(c) : res.status(404).json({ error: "Not found" }); });
+router.post("/container-engine/:id/stop", (req: Request, res: Response): void => { const c = containerEngineService.stop(req.params.id as string); c ? res.json(c) : res.status(404).json({ error: "Not found" }); });
+router.delete("/container-engine/:id", (req: Request, res: Response): void => { containerEngineService.remove(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.post("/container-engine/:id/exec", (req: Request, res: Response): void => { const r = containerEngineService.exec(req.params.id as string, req.body.command); r ? res.json(r) : res.status(404).json({ error: "Not found or not running" }); });
+router.get("/container-engine/:id/logs", (req: Request, res: Response): void => { res.json(containerEngineService.getLogs(req.params.id as string, Number(req.query.lines) || 100)); });
+router.get("/container-engine/:id/stats", (req: Request, res: Response): void => { const s = containerEngineService.getStats(req.params.id as string); s ? res.json(s) : res.status(404).json({ error: "Not found" }); });
+router.get("/container-engine/project/:projectId", (req: Request, res: Response): void => { res.json(containerEngineService.listByProject(req.params.projectId as string)); });
+export default router;

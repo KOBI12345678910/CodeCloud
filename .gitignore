@@ -8,6 +8,9 @@ out-tsc
 .expo
 .expo-shared
 
+# user-uploaded reference files
+attached_assets/
+
 # dependencies
 node_modules
 

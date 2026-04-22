@@ -1,0 +1,11 @@
+import { Router, Request, Response } from "express";
+import { supportTicketsService } from "../services/support-tickets";
+const router = Router();
+router.get("/support-tickets", (req: Request, res: Response): void => { res.json(supportTicketsService.list(req.query.status as any)); });
+router.get("/support-tickets/user/:userId", (req: Request, res: Response): void => { res.json(supportTicketsService.listByUser(req.params.userId as string)); });
+router.post("/support-tickets", (req: Request, res: Response): void => { res.status(201).json(supportTicketsService.create(req.body)); });
+router.get("/support-tickets/:id", (req: Request, res: Response): void => { const t = supportTicketsService.get(req.params.id as string); t ? res.json(t) : res.status(404).json({ error: "Not found" }); });
+router.post("/support-tickets/:id/reply", (req: Request, res: Response): void => { const t = supportTicketsService.reply(req.params.id as string, req.body.from, req.body.message); t ? res.json(t) : res.status(404).json({ error: "Not found" }); });
+router.put("/support-tickets/:id/status", (req: Request, res: Response): void => { const t = supportTicketsService.updateStatus(req.params.id as string, req.body.status); t ? res.json(t) : res.status(404).json({ error: "Not found" }); });
+router.post("/support-tickets/:id/assign", (req: Request, res: Response): void => { const t = supportTicketsService.assign(req.params.id as string, req.body.assignedTo); t ? res.json(t) : res.status(404).json({ error: "Not found" }); });
+export default router;

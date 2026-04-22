@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { stripeBillingService } from "../services/stripe-billing";
+const router = Router();
+router.post("/stripe-billing/customers", (req: Request, res: Response): void => { res.status(201).json(stripeBillingService.createCustomer(req.body.userId, req.body.email)); });
+router.get("/stripe-billing/customers/:userId", (req: Request, res: Response): void => { const c = stripeBillingService.getCustomer(req.params.userId as string); c ? res.json(c) : res.status(404).json({ error: "Not found" }); });
+router.post("/stripe-billing/payments", (req: Request, res: Response): void => { res.json(stripeBillingService.createPayment(req.body.customerId, req.body.amount, req.body.description)); });
+router.get("/stripe-billing/payments/:customerId", (req: Request, res: Response): void => { res.json(stripeBillingService.getPayments(req.params.customerId as string)); });
+router.post("/stripe-billing/refund/:paymentId", (req: Request, res: Response): void => { const p = stripeBillingService.refund(req.params.paymentId as string); p ? res.json(p) : res.status(404).json({ error: "Not found" }); });
+router.get("/stripe-billing/revenue", (_req: Request, res: Response): void => { res.json(stripeBillingService.getRevenue()); });
+export default router;

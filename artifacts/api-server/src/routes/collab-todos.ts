@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { collabTodosService } from "../services/collab-todos";
+const router = Router();
+router.get("/collab-todos/:projectId", (req: Request, res: Response): void => { res.json(collabTodosService.list(req.params.projectId as string)); });
+router.post("/collab-todos", (req: Request, res: Response): void => { res.status(201).json(collabTodosService.create(req.body)); });
+router.get("/collab-todos/item/:id", (req: Request, res: Response): void => { const t = collabTodosService.get(req.params.id as string); t ? res.json(t) : res.status(404).json({ error: "Not found" }); });
+router.put("/collab-todos/:id", (req: Request, res: Response): void => { const t = collabTodosService.update(req.params.id as string, req.body); t ? res.json(t) : res.status(404).json({ error: "Not found" }); });
+router.post("/collab-todos/:id/toggle", (req: Request, res: Response): void => { const t = collabTodosService.toggle(req.params.id as string); t ? res.json(t) : res.status(404).json({ error: "Not found" }); });
+router.delete("/collab-todos/:id", (req: Request, res: Response): void => { collabTodosService.delete(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

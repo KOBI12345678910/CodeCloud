@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { accessControlService } from "../services/access-control";
+const router = Router();
+router.get("/access-control/roles", (_req: Request, res: Response): void => { res.json(accessControlService.getRoles()); });
+router.get("/access-control/project/:projectId", (req: Request, res: Response): void => { res.json(accessControlService.getPolicies(req.params.projectId as string)); });
+router.post("/access-control/grant", (req: Request, res: Response): void => { res.status(201).json(accessControlService.grantAccess(req.body.projectId, req.body.userId, req.body.role, req.body.grantedBy)); });
+router.post("/access-control/revoke", (req: Request, res: Response): void => { accessControlService.revokeAccess(req.body.projectId, req.body.userId) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.post("/access-control/check", (req: Request, res: Response): void => { res.json({ allowed: accessControlService.checkAccess(req.body.projectId, req.body.userId, req.body.resource, req.body.action) }); });
+router.get("/access-control/project/:projectId/user/:userId", (req: Request, res: Response): void => { const role = accessControlService.getUserRole(req.params.projectId as string, req.params.userId as string); role ? res.json({ role }) : res.status(404).json({ error: "No access" }); });
+export default router;

@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { domainManagementService } from "../services/domain-management";
+const router = Router();
+router.get("/domain-management/project/:projectId", (req: Request, res: Response): void => { res.json(domainManagementService.listByProject(req.params.projectId as string)); });
+router.post("/domain-management", (req: Request, res: Response): void => { res.status(201).json(domainManagementService.add(req.body.projectId, req.body.domain)); });
+router.get("/domain-management/:id", (req: Request, res: Response): void => { const d = domainManagementService.get(req.params.id as string); d ? res.json(d) : res.status(404).json({ error: "Not found" }); });
+router.post("/domain-management/:id/verify", (req: Request, res: Response): void => { const d = domainManagementService.verify(req.params.id as string); d ? res.json(d) : res.status(404).json({ error: "Not found" }); });
+router.post("/domain-management/:id/activate", (req: Request, res: Response): void => { const d = domainManagementService.activate(req.params.id as string); d ? res.json(d) : res.status(404).json({ error: "Not found" }); });
+router.delete("/domain-management/:id", (req: Request, res: Response): void => { domainManagementService.delete(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

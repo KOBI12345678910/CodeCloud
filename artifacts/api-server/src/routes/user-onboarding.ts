@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { userOnboardingService } from "../services/user-onboarding";
+const router = Router();
+router.get("/user-onboarding/steps", (_req: Request, res: Response): void => { res.json(userOnboardingService.getSteps()); });
+router.post("/user-onboarding/:userId/start", (req: Request, res: Response): void => { res.json(userOnboardingService.start(req.params.userId as string)); });
+router.get("/user-onboarding/:userId", (req: Request, res: Response): void => { const p = userOnboardingService.get(req.params.userId as string); p ? res.json(p) : res.status(404).json({ error: "Not started" }); });
+router.post("/user-onboarding/:userId/complete/:step", (req: Request, res: Response): void => { const p = userOnboardingService.completeStep(req.params.userId as string, req.params.step as string); p ? res.json(p) : res.status(404).json({ error: "Not found" }); });
+router.post("/user-onboarding/:userId/skip/:step", (req: Request, res: Response): void => { const p = userOnboardingService.skipStep(req.params.userId as string, req.params.step as string); p ? res.json(p) : res.status(404).json({ error: "Not found" }); });
+router.post("/user-onboarding/:userId/reset", (req: Request, res: Response): void => { res.json(userOnboardingService.reset(req.params.userId as string)); });
+export default router;

@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { scheduledTasksService } from "../services/scheduled-tasks";
+const router = Router();
+router.get("/scheduled-tasks/project/:projectId", (req: Request, res: Response): void => { res.json(scheduledTasksService.listByProject(req.params.projectId as string)); });
+router.post("/scheduled-tasks", (req: Request, res: Response): void => { res.status(201).json(scheduledTasksService.create(req.body)); });
+router.get("/scheduled-tasks/:id", (req: Request, res: Response): void => { const t = scheduledTasksService.get(req.params.id as string); t ? res.json(t) : res.status(404).json({ error: "Not found" }); });
+router.post("/scheduled-tasks/:id/run", (req: Request, res: Response): void => { const t = scheduledTasksService.run(req.params.id as string); t ? res.json(t) : res.status(404).json({ error: "Not found" }); });
+router.post("/scheduled-tasks/:id/toggle", (req: Request, res: Response): void => { const t = scheduledTasksService.toggle(req.params.id as string); t ? res.json(t) : res.status(404).json({ error: "Not found" }); });
+router.delete("/scheduled-tasks/:id", (req: Request, res: Response): void => { scheduledTasksService.delete(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

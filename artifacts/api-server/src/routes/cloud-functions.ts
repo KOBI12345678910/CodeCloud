@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { cloudFunctionsService } from "../services/cloud-functions";
+const router = Router();
+router.get("/cloud-functions/project/:projectId", (req: Request, res: Response): void => { res.json(cloudFunctionsService.listByProject(req.params.projectId as string)); });
+router.post("/cloud-functions", (req: Request, res: Response): void => { res.status(201).json(cloudFunctionsService.create(req.body)); });
+router.get("/cloud-functions/:id", (req: Request, res: Response): void => { const f = cloudFunctionsService.get(req.params.id as string); f ? res.json(f) : res.status(404).json({ error: "Not found" }); });
+router.post("/cloud-functions/:id/deploy", (req: Request, res: Response): void => { const f = cloudFunctionsService.deploy(req.params.id as string); f ? res.json(f) : res.status(404).json({ error: "Not found" }); });
+router.post("/cloud-functions/:id/invoke", (req: Request, res: Response): void => { const r = cloudFunctionsService.invoke(req.params.id as string, req.body); r ? res.json(r) : res.status(404).json({ error: "Not found or inactive" }); });
+router.delete("/cloud-functions/:id", (req: Request, res: Response): void => { cloudFunctionsService.delete(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

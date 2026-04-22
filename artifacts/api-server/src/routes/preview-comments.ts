@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { previewCommentsService } from "../services/preview-comments";
+const router = Router();
+router.get("/preview-comments/:deploymentId", (req: Request, res: Response): void => { res.json(previewCommentsService.list(req.params.deploymentId as string)); });
+router.post("/preview-comments", (req: Request, res: Response): void => { res.status(201).json(previewCommentsService.create(req.body)); });
+router.get("/preview-comments/comment/:id", (req: Request, res: Response): void => { const c = previewCommentsService.get(req.params.id as string); c ? res.json(c) : res.status(404).json({ error: "Not found" }); });
+router.post("/preview-comments/:id/reply", (req: Request, res: Response): void => { const c = previewCommentsService.reply(req.params.id as string, req.body.userId, req.body.userName, req.body.text); c ? res.json(c) : res.status(404).json({ error: "Not found" }); });
+router.post("/preview-comments/:id/resolve", (req: Request, res: Response): void => { previewCommentsService.resolve(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.delete("/preview-comments/:id", (req: Request, res: Response): void => { previewCommentsService.delete(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

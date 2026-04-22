@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { gdprComplianceService } from "../services/gdpr-compliance";
+const router = Router();
+router.post("/gdpr-compliance/export", (req: Request, res: Response): void => { res.json(gdprComplianceService.requestExport(req.body.userId)); });
+router.get("/gdpr-compliance/export/:id", (req: Request, res: Response): void => { const r = gdprComplianceService.getExport(req.params.id as string); r ? res.json(r) : res.status(404).json({ error: "Not found" }); });
+router.get("/gdpr-compliance/exports/:userId", (req: Request, res: Response): void => { res.json(gdprComplianceService.listExports(req.params.userId as string)); });
+router.post("/gdpr-compliance/deletion", (req: Request, res: Response): void => { res.json(gdprComplianceService.requestDeletion(req.body.userId, req.body.reason)); });
+router.get("/gdpr-compliance/deletions/:userId", (req: Request, res: Response): void => { res.json(gdprComplianceService.listDeletions(req.params.userId as string)); });
+router.post("/gdpr-compliance/deletion/:id/cancel", (req: Request, res: Response): void => { gdprComplianceService.cancelDeletion(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Cannot cancel" }); });
+export default router;

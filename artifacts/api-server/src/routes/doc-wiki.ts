@@ -1,0 +1,11 @@
+import { Router, Request, Response } from "express";
+import { docWikiService } from "../services/doc-wiki";
+const router = Router();
+router.get("/doc-wiki/:projectId", (req: Request, res: Response): void => { res.json(docWikiService.listByProject(req.params.projectId as string)); });
+router.get("/doc-wiki/:projectId/tree", (req: Request, res: Response): void => { res.json(docWikiService.getTree(req.params.projectId as string)); });
+router.get("/doc-wiki/:projectId/slug/:slug", (req: Request, res: Response): void => { const p = docWikiService.getBySlug(req.params.projectId as string, req.params.slug as string); p ? res.json(p) : res.status(404).json({ error: "Not found" }); });
+router.post("/doc-wiki", (req: Request, res: Response): void => { res.status(201).json(docWikiService.create(req.body)); });
+router.put("/doc-wiki/:id", (req: Request, res: Response): void => { const { updatedBy, ...updates } = req.body; const p = docWikiService.update(req.params.id as string, updates, updatedBy || "system"); p ? res.json(p) : res.status(404).json({ error: "Not found" }); });
+router.delete("/doc-wiki/:id", (req: Request, res: Response): void => { docWikiService.delete(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.post("/doc-wiki/:projectId/search", (req: Request, res: Response): void => { res.json(docWikiService.search(req.params.projectId as string, req.body.query || "")); });
+export default router;

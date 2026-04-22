@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { canaryAnalysisService } from "../services/canary-analysis";
+const router = Router();
+router.get("/canary-analysis", (req: Request, res: Response): void => { res.json(canaryAnalysisService.list(req.query.projectId as string)); });
+router.post("/canary-analysis", (req: Request, res: Response): void => { const { projectId, baseVersion, canaryVersion, trafficPercent } = req.body; res.status(201).json(canaryAnalysisService.start(projectId, baseVersion, canaryVersion, trafficPercent)); });
+router.get("/canary-analysis/:id", (req: Request, res: Response): void => { const d = canaryAnalysisService.get(req.params.id as string); d ? res.json(d) : res.status(404).json({ error: "Not found" }); });
+router.post("/canary-analysis/:id/analyze", (req: Request, res: Response): void => { const d = canaryAnalysisService.analyze(req.params.id as string); d ? res.json(d) : res.status(404).json({ error: "Not found" }); });
+router.post("/canary-analysis/:id/promote", (req: Request, res: Response): void => { canaryAnalysisService.promote(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.post("/canary-analysis/:id/rollback", (req: Request, res: Response): void => { canaryAnalysisService.rollback(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

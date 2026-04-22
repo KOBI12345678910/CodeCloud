@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { ssoProviderService } from "../services/sso-provider";
+const router = Router();
+router.get("/sso-provider/org/:orgId", (req: Request, res: Response): void => { res.json(ssoProviderService.listByOrg(req.params.orgId as string)); });
+router.post("/sso-provider", (req: Request, res: Response): void => { res.status(201).json(ssoProviderService.configure(req.body)); });
+router.get("/sso-provider/:id", (req: Request, res: Response): void => { const p = ssoProviderService.get(req.params.id as string); p ? res.json(p) : res.status(404).json({ error: "Not found" }); });
+router.post("/sso-provider/:id/login", (req: Request, res: Response): void => { const s = ssoProviderService.initiateLogin(req.params.id as string, req.body.email); s ? res.json(s) : res.status(404).json({ error: "Not found or disabled" }); });
+router.post("/sso-provider/:id/toggle", (req: Request, res: Response): void => { const p = ssoProviderService.toggle(req.params.id as string); p ? res.json(p) : res.status(404).json({ error: "Not found" }); });
+router.delete("/sso-provider/:id", (req: Request, res: Response): void => { ssoProviderService.delete(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

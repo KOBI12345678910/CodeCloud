@@ -1,0 +1,11 @@
+import { Router, Request, Response } from "express";
+import { i18nService } from "../services/i18n";
+const router = Router();
+router.get("/i18n/config", (_req: Request, res: Response): void => { res.json(i18nService.getConfig()); });
+router.put("/i18n/config", (req: Request, res: Response): void => { res.json(i18nService.updateConfig(req.body)); });
+router.get("/i18n/locales", (_req: Request, res: Response): void => { res.json(i18nService.getSupportedLocales()); });
+router.get("/i18n/:locale", (req: Request, res: Response): void => { res.json(i18nService.getLocale(req.params.locale as string)); });
+router.post("/i18n/:locale", (req: Request, res: Response): void => { res.json({ imported: i18nService.bulkSet(req.params.locale as string, req.body) }); });
+router.get("/i18n/:locale/translate/:key", (req: Request, res: Response): void => { res.json({ value: i18nService.getTranslation(req.params.locale as string, req.params.key as string) }); });
+router.get("/i18n/:locale/missing", (req: Request, res: Response): void => { res.json(i18nService.getMissingKeys(req.params.locale as string)); });
+export default router;

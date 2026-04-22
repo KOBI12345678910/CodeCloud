@@ -1,0 +1,11 @@
+import { Router, Request, Response } from "express";
+import { codeReviewSystemService } from "../services/code-review-system";
+const router = Router();
+router.get("/code-review-system/project/:projectId", (req: Request, res: Response): void => { res.json(codeReviewSystemService.listByProject(req.params.projectId as string)); });
+router.post("/code-review-system", (req: Request, res: Response): void => { res.status(201).json(codeReviewSystemService.create(req.body)); });
+router.get("/code-review-system/:id", (req: Request, res: Response): void => { const r = codeReviewSystemService.get(req.params.id as string); r ? res.json(r) : res.status(404).json({ error: "Not found" }); });
+router.post("/code-review-system/:id/comment", (req: Request, res: Response): void => { const r = codeReviewSystemService.addComment(req.params.id as string, req.body); r ? res.json(r) : res.status(404).json({ error: "Not found" }); });
+router.post("/code-review-system/:id/approve", (req: Request, res: Response): void => { const r = codeReviewSystemService.approve(req.params.id as string); r ? res.json(r) : res.status(404).json({ error: "Not found" }); });
+router.post("/code-review-system/:id/request-changes", (req: Request, res: Response): void => { const r = codeReviewSystemService.requestChanges(req.params.id as string); r ? res.json(r) : res.status(404).json({ error: "Not found" }); });
+router.post("/code-review-system/:id/merge", (req: Request, res: Response): void => { const r = codeReviewSystemService.merge(req.params.id as string); r ? res.json(r) : res.status(404).json({ error: "Not found" }); });
+export default router;

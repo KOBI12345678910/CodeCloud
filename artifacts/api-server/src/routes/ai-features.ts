@@ -1,0 +1,11 @@
+import { Router, Request, Response } from "express";
+import { aiFeaturesService } from "../services/ai-features";
+const router = Router();
+router.post("/ai-features/complete", (req: Request, res: Response): void => { res.json(aiFeaturesService.complete(req.body.code || "", req.body.language || "typescript")); });
+router.post("/ai-features/refactor", (req: Request, res: Response): void => { res.json(aiFeaturesService.refactor(req.body.code || "", req.body.language || "typescript")); });
+router.post("/ai-features/fix", (req: Request, res: Response): void => { res.json(aiFeaturesService.fix(req.body.code || "", req.body.error || "", req.body.language || "typescript")); });
+router.post("/ai-features/explain", (req: Request, res: Response): void => { res.json(aiFeaturesService.explain(req.body.code || "", req.body.language || "typescript")); });
+router.post("/ai-features/review", (req: Request, res: Response): void => { res.json(aiFeaturesService.review(req.body.code || "", req.body.language || "typescript")); });
+router.post("/ai-features/generate-tests", (req: Request, res: Response): void => { res.json(aiFeaturesService.generateTests(req.body.code || "", req.body.language || "typescript")); });
+router.post("/ai-features/debug", (req: Request, res: Response): void => { res.json(aiFeaturesService.debug(req.body.code || "", req.body.error || "", req.body.language || "typescript")); });
+export default router;

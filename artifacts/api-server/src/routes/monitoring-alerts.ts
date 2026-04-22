@@ -1,0 +1,11 @@
+import { Router, Request, Response } from "express";
+import { monitoringAlertsService } from "../services/monitoring-alerts";
+const router = Router();
+router.get("/monitoring-alerts/rules", (_req: Request, res: Response): void => { res.json(monitoringAlertsService.getRules()); });
+router.post("/monitoring-alerts/rules", (req: Request, res: Response): void => { res.status(201).json(monitoringAlertsService.createRule(req.body)); });
+router.put("/monitoring-alerts/rules/:id", (req: Request, res: Response): void => { const r = monitoringAlertsService.updateRule(req.params.id as string, req.body); r ? res.json(r) : res.status(404).json({ error: "Not found" }); });
+router.delete("/monitoring-alerts/rules/:id", (req: Request, res: Response): void => { monitoringAlertsService.deleteRule(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+router.get("/monitoring-alerts", (req: Request, res: Response): void => { res.json(monitoringAlertsService.getAlerts(req.query.status as any)); });
+router.post("/monitoring-alerts/check", (req: Request, res: Response): void => { const { metric, value } = req.body; res.json(monitoringAlertsService.checkMetric(metric, value)); });
+router.post("/monitoring-alerts/:id/resolve", (req: Request, res: Response): void => { monitoringAlertsService.resolveAlert(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

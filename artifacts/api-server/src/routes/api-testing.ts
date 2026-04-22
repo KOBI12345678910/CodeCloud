@@ -1,0 +1,10 @@
+import { Router, Request, Response } from "express";
+import { apiTestingService } from "../services/api-testing";
+const router = Router();
+router.get("/api-testing", (_req: Request, res: Response): void => { res.json(apiTestingService.listSuites()); });
+router.post("/api-testing", (req: Request, res: Response): void => { res.status(201).json(apiTestingService.createSuite(req.body.name)); });
+router.get("/api-testing/:id", (req: Request, res: Response): void => { const s = apiTestingService.getSuite(req.params.id as string); s ? res.json(s) : res.status(404).json({ error: "Not found" }); });
+router.post("/api-testing/:id/tests", (req: Request, res: Response): void => { const t = apiTestingService.addTest(req.params.id as string, req.body); t ? res.status(201).json(t) : res.status(404).json({ error: "Suite not found" }); });
+router.post("/api-testing/:id/run", (req: Request, res: Response): void => { res.json(apiTestingService.runSuite(req.params.id as string)); });
+router.delete("/api-testing/:id", (req: Request, res: Response): void => { apiTestingService.deleteSuite(req.params.id as string) ? res.json({ success: true }) : res.status(404).json({ error: "Not found" }); });
+export default router;

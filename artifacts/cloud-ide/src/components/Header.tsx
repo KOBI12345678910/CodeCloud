@@ -15,11 +15,11 @@ import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/s
 import { Badge } from "@/components/ui/badge";
 
 const PUBLIC_NAV = [
+  { label: "BuildHub AI", href: "/build", badge: "New" as const },
   { label: "Product", href: "/product" },
   { label: "Solutions", href: "/solutions" },
   { label: "Pricing", href: "/pricing" },
   { label: "Blog", href: "/blog" },
-  { label: "Careers", href: "/careers" },
   { label: "Docs", href: "/docs" },
 ];
 
@@ -69,14 +69,19 @@ export default function Header({ variant = "default" }: HeaderProps) {
             {PUBLIC_NAV.map((link) => (
               <Link key={link.href} href={link.href}>
                 <button
-                  className={`px-3 py-1.5 rounded-md text-[14px] font-medium transition-colors ${
+                  className={`relative px-3 py-1.5 rounded-md text-[14px] font-medium transition-colors inline-flex items-center gap-1.5 ${
                     isActive(link.href)
                       ? "text-white"
                       : "text-white/60 hover:text-white"
                   }`}
-                  data-testid={`nav-${link.label.toLowerCase()}`}
+                  data-testid={`nav-${link.label.toLowerCase().replace(/\s+/g, "-")}`}
                 >
                   {link.label}
+                  {(link as any).badge && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white leading-none">
+                      {(link as any).badge}
+                    </span>
+                  )}
                 </button>
               </Link>
             ))}

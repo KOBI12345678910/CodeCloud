@@ -292,6 +292,7 @@ import gpuRouter from "./gpu";
 import domainsRouter from "./domains";
 import billingRouter from "./billing";
 import mobileRouter from "./mobile";
+import buildhubRouter from "./buildhub";
 
 const router: IRouter = Router();
 
@@ -588,5 +589,6 @@ router.use(gpuRouter);
 router.use(domainsRouter);
 router.use(billingRouter);
 router.use(mobileRouter);
+router.use(buildhubRouter);
 
 export default router;

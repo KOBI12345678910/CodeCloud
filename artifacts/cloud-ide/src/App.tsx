@@ -52,6 +52,8 @@ import {
   ProductPage, SolutionsPage, BlogPage, CareersPage,
   DocsPage, AboutPage, TermsPage, PrivacyPage,
 } from "@/pages/marketing-stub";
+import BuildHubPage from "@/pages/buildhub";
+import BuildHubWorkspace from "@/pages/buildhub-workspace";
 import NotFound from "@/pages/not-found";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -261,6 +263,10 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/error-tracking">
               <ProtectedRoute component={ErrorTrackingPage} />
+            </Route>
+            <Route path="/build" component={BuildHubPage} />
+            <Route path="/build/:id">
+              {(params) => <BuildHubWorkspace id={params.id} />}
             </Route>
             <Route path="/product" component={ProductPage} />
             <Route path="/solutions" component={SolutionsPage} />

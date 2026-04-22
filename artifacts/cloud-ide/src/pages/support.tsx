@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "wouter";
-import MarketingNav from "@/components/MarketingNav";
-import Footer from "@/components/Footer";
+import MarketingHeader from "@/components/MarketingHeader";
+import MarketingFooter from "@/components/MarketingFooter";
 
 const CATEGORIES = ["General question", "Bug report", "Billing", "Feature request", "Security", "Other"];
 
@@ -52,7 +52,7 @@ export default function SupportPage(): React.ReactElement {
 
   return (
     <div className="min-h-screen bg-background text-foreground" data-testid="support-page">
-      <MarketingNav />
+      <MarketingHeader />
       <main className="max-w-5xl mx-auto px-6 py-16">
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight">How can we help?</h1>
@@ -166,7 +166,7 @@ export default function SupportPage(): React.ReactElement {
           </aside>
         </div>
       </main>
-      <Footer />
+      <MarketingFooter />
     </div>
   );
 }

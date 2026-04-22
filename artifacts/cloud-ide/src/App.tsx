@@ -79,6 +79,10 @@ import AdminPricingPage from "@/pages/admin-pricing";
 import ServiceMarketplacePage from "@/pages/service-marketplace";
 import ModelConnectorPage from "@/pages/model-connector";
 import SuperAdminPage from "@/pages/super-admin";
+import ObservabilityPage from "@/pages/observability";
+import SettingsBackupsPage from "@/pages/settings-backups";
+import CdnConfigPage from "@/pages/cdn-config";
+import QueueDashboardPage from "@/pages/queue-dashboard";
 const PlanModePage = lazy(() => import("@/pages/plan"));
 const VisualEditPage = lazy(() => import("@/pages/visual-edit"));
 const DeployPage = lazy(() => import("@/pages/deploy"));
@@ -437,6 +441,18 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/super-admin">
               <ProtectedRoute component={SuperAdminPage} />
+            </Route>
+            <Route path="/admin/observability">
+              <AdminRoute component={ObservabilityPage} />
+            </Route>
+            <Route path="/settings/backups">
+              <ProtectedRoute component={SettingsBackupsPage} />
+            </Route>
+            <Route path="/cdn-config">
+              <ProtectedRoute component={CdnConfigPage} />
+            </Route>
+            <Route path="/admin/queues">
+              <AdminRoute component={QueueDashboardPage} />
             </Route>
             <Route path="/plan">
               <Suspense fallback={<LazyFallback />}>

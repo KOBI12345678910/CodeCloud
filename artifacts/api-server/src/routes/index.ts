@@ -329,6 +329,8 @@ import dataResidencyRouter from "./data-residency";
 import dataRetentionRouter from "./data-retention";
 import dpaRouter from "./dpa";
 import complianceDashboardRouter from "./compliance-dashboard";
+import observabilityRouter from "./observability";
+import queueDashboardRouter from "./queue-dashboard";
 import { authLimiter, aiLimiter, uploadLimiter, deployLimiter, billingLimiter } from "../middlewares/rateLimit";
 import { requireApiKeyScope } from "../middlewares/apiKeyScope";
 
@@ -666,5 +668,7 @@ router.use(dataResidencyRouter);
 router.use(dataRetentionRouter);
 router.use(dpaRouter);
 router.use(complianceDashboardRouter);
+router.use(observabilityRouter);
+router.use(queueDashboardRouter);
 
 export default router;

@@ -64,3 +64,5 @@ export * from "./ip-allowlist";
 export * from "./dsar-requests";
 export * from "./user-consents";
 export * from "./data-retention-policies";
+export * from "./database-backups";
+export * from "./scaling-rules";

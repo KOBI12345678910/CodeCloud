@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 
 const APP_NAME = "CodeCloud";
 
-function generateBackupCodes(count = 10): string[] {
+export function generateBackupCodes(count = 10): string[] {
   return Array.from({ length: count }, () =>
     crypto.randomBytes(4).toString("hex").toUpperCase().match(/.{4}/g)!.join("-")
   );
@@ -50,6 +50,14 @@ export async function setupTwoFactor(userId: string) {
   }
 
   return { qrCodeUrl, secret: secret.base32, backupCodes, otpauthUrl: uri };
+}
+
+export async function enableTwoFactor(userId: string): Promise<void> {
+  await db.update(twoFactorSecretsTable).set({
+    enabled: true,
+    verifiedAt: new Date(),
+  }).where(eq(twoFactorSecretsTable.userId, userId));
+  await db.update(usersTable).set({ twoFactorEnabled: true }).where(eq(usersTable.id, userId));
 }
 
 export async function verifyAndEnableTwoFactor(userId: string, code: string): Promise<boolean> {

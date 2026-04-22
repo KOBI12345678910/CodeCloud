@@ -1,14 +1,57 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Link } from "wouter";
 import {
   ArrowLeft, Activity, Heart, AlertTriangle, XCircle, CheckCircle,
   Clock, RefreshCw, Server, Cpu, HardDrive, Wifi, Shield, Zap,
   ChevronDown, ChevronRight, RotateCcw, Trash2, Play, Pause,
   TrendingUp, TrendingDown, Minus, Eye, Settings, Bell, Filter,
-  MoreHorizontal, Download
+  MoreHorizontal, Download, Database, Globe
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/contexts/theme-context";
+
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+const apiUrl = (p: string) => `${basePath}/api${p}`;
+
+interface DependencyHealth {
+  database: { healthy: boolean; latencyMs: number; message: string };
+  redis: { healthy: boolean; latencyMs: number; message: string; stats: { connected: boolean; entries: number; hits: number; misses: number; hitRate: number } };
+  aiProviders: { providers: { name: string; healthy: boolean; latencyMs: number; message: string }[] };
+}
+
+interface TimeSeriesPoint { timestamp: number; value: number; }
+
+function generateTimeSeries(baseValue: number, variance: number, points: number = 60): TimeSeriesPoint[] {
+  const now = Date.now();
+  return Array.from({ length: points }, (_, i) => ({
+    timestamp: now - (points - i) * 60000,
+    value: Math.max(0, baseValue + (Math.random() - 0.5) * variance * 2),
+  }));
+}
+
+function SparkLineChart({ data, color = "#3b82f6", height = 50, label, unit, current }: { data: TimeSeriesPoint[]; color?: string; height?: number; label: string; unit: string; current: number }) {
+  if (data.length < 2) return null;
+  const values = data.map(d => d.value);
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const range = max - min || 1;
+  const w = 300;
+  const points = values.map((v, i) => `${(i / (values.length - 1)) * w},${height - ((v - min) / range) * (height - 8) - 4}`).join(" ");
+  const fillPoints = `0,${height} ${points} ${w},${height}`;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-xs font-medium">{label}</span>
+        <span className="text-xs text-muted-foreground">{current.toFixed(1)}{unit}</span>
+      </div>
+      <svg viewBox={`0 0 ${w} ${height}`} className="w-full" preserveAspectRatio="none">
+        <polygon fill={`${color}15`} points={fillPoints} />
+        <polyline fill="none" stroke={color} strokeWidth="1.5" points={points} />
+      </svg>
+    </div>
+  );
+}
 
 type HealthStatus = "healthy" | "degraded" | "unhealthy" | "unknown";
 
@@ -208,8 +251,26 @@ export default function ContainerHealth(): React.ReactElement {
   const [selectedContainer, setSelectedContainer] = useState<string | null>(null);
   const [expandedContainers, setExpandedContainers] = useState<Set<string>>(new Set(["c3"]));
   const [filterStatus, setFilterStatus] = useState<HealthStatus | "all">("all");
-  const [activeTab, setActiveTab] = useState<"overview" | "alerts" | "timeline">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "alerts" | "timeline" | "resources" | "dependencies">("overview");
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [depHealth, setDepHealth] = useState<DependencyHealth | null>(null);
+  const [cpuTimeSeries] = useState(() => containers.map(c => ({ id: c.id, data: generateTimeSeries(c.metrics.cpuPercent, 15) })));
+  const [memTimeSeries] = useState(() => containers.map(c => ({ id: c.id, data: generateTimeSeries(c.metrics.memoryMB, 50) })));
+  const [diskTimeSeries] = useState(() => containers.map(c => ({ id: c.id, data: generateTimeSeries(c.metrics.diskMB, 30) })));
+  const [netTimeSeries] = useState(() => containers.map(c => ({ id: c.id, data: generateTimeSeries(c.metrics.networkOutKBs, 50) })));
+
+  useEffect(() => {
+    const loadHealth = async () => {
+      try {
+        const r = await fetch(apiUrl("/health"));
+        if (r.ok) {
+          const d = await r.json();
+          if (d.dependencies) setDepHealth(d.dependencies);
+        }
+      } catch {}
+    };
+    loadHealth();
+  }, []);
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedContainers(prev => {
@@ -296,7 +357,7 @@ export default function ContainerHealth(): React.ReactElement {
         </div>
 
         <div className="flex items-center gap-2">
-          {(["overview", "alerts", "timeline"] as const).map(tab => (
+          {(["overview", "resources", "dependencies", "alerts", "timeline"] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -306,7 +367,7 @@ export default function ContainerHealth(): React.ReactElement {
                   : theme === "dark" ? "text-gray-400 hover:bg-[#1e2533]" : "text-gray-500 hover:bg-gray-100"
               }`}
             >
-              {tab === "overview" ? "Overview" : tab === "alerts" ? `Alerts (${unacknowledgedAlerts})` : "Timeline"}
+              {tab === "overview" ? "Overview" : tab === "resources" ? "Resources" : tab === "dependencies" ? "Dependencies" : tab === "alerts" ? `Alerts (${unacknowledgedAlerts})` : "Timeline"}
             </button>
           ))}
           <div className="ml-auto flex items-center gap-2">
@@ -488,6 +549,88 @@ export default function ContainerHealth(): React.ReactElement {
                     </div>
                   ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "resources" && (
+          <div className="space-y-4">
+            {filtered.map(container => {
+              const cpuData = cpuTimeSeries.find(c => c.id === container.id)?.data || [];
+              const memData = memTimeSeries.find(c => c.id === container.id)?.data || [];
+              const diskData = diskTimeSeries.find(c => c.id === container.id)?.data || [];
+              const netData = netTimeSeries.find(c => c.id === container.id)?.data || [];
+              return (
+                <div key={container.id} className={`rounded-xl border p-4 ${theme === "dark" ? "bg-[#161b22] border-[#1e2533]" : "bg-white border-gray-200"}`}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <StatusBadge status={container.status} />
+                    <span className="font-medium text-sm">{container.name}</span>
+                    <span className="text-[10px] text-muted-foreground">{container.projectName}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <SparkLineChart data={cpuData} color="#3b82f6" label="CPU Usage" unit="%" current={container.metrics.cpuPercent} />
+                    <SparkLineChart data={memData} color="#a855f7" label="Memory" unit=" MB" current={container.metrics.memoryMB} />
+                    <SparkLineChart data={diskData} color="#06b6d4" label="Disk I/O" unit=" MB" current={container.metrics.diskMB} />
+                    <SparkLineChart data={netData} color="#22c55e" label="Network Out" unit=" KB/s" current={container.metrics.networkOutKBs} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {activeTab === "dependencies" && (
+          <div className="space-y-4">
+            <div className={`rounded-xl border p-4 ${theme === "dark" ? "bg-[#161b22] border-[#1e2533]" : "bg-white border-gray-200"}`}>
+              <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><Database size={14} /> Dependency Health Checks</h3>
+              {depHealth ? (
+                <div className="space-y-3">
+                  <div className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${theme === "dark" ? "bg-[#0e1117]/50" : "bg-gray-50"}`}>
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${depHealth.database.healthy ? "bg-green-400" : "bg-red-400"}`} />
+                      <Database size={14} className="text-muted-foreground" />
+                      <span className="text-sm font-medium">PostgreSQL Database</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>{depHealth.database.message}</span>
+                      <span>{depHealth.database.latencyMs}ms</span>
+                      <StatusBadge status={depHealth.database.healthy ? "healthy" : "unhealthy"} />
+                    </div>
+                  </div>
+
+                  <div className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${theme === "dark" ? "bg-[#0e1117]/50" : "bg-gray-50"}`}>
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${depHealth.redis.healthy ? "bg-green-400" : "bg-red-400"}`} />
+                      <Zap size={14} className="text-muted-foreground" />
+                      <span className="text-sm font-medium">Redis Cache</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>{depHealth.redis.message}</span>
+                      <span>{depHealth.redis.latencyMs}ms</span>
+                      <span>Entries: {depHealth.redis.stats.entries}</span>
+                      <span>Hit Rate: {(depHealth.redis.stats.hitRate * 100).toFixed(0)}%</span>
+                      <StatusBadge status={depHealth.redis.healthy ? "healthy" : "unhealthy"} />
+                    </div>
+                  </div>
+
+                  {depHealth.aiProviders.providers.map(provider => (
+                    <div key={provider.name} className={`flex items-center justify-between px-3 py-2.5 rounded-lg ${theme === "dark" ? "bg-[#0e1117]/50" : "bg-gray-50"}`}>
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${provider.healthy ? "bg-green-400" : "bg-red-400"}`} />
+                        <Globe size={14} className="text-muted-foreground" />
+                        <span className="text-sm font-medium">{provider.name}</span>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span>{provider.message}</span>
+                        <span>{provider.latencyMs}ms</span>
+                        <StatusBadge status={provider.healthy ? "healthy" : "unhealthy"} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground text-sm">Loading dependency health data...</div>
+              )}
             </div>
           </div>
         )}

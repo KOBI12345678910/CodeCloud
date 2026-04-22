@@ -44,6 +44,7 @@ The frontend uses React 19, Vite, and Tailwind CSS v4, providing a responsive an
 - **DevOps:** CI/CD pipeline, build cache, coverage, linting, vulnerability scanning, auto-rollback. Automated testing on deploy: configurable per-project test commands run before deployment, blocking deployment if tests fail.
 - **i18n:** 134+ language support with RTL.
 - **Middleware Stack:** Includes `requestId` for correlation IDs, `requestLogger` for structured logging, `responseTime` header, `noSniff` for content security, and `auditMiddleware`.
+- **Infrastructure Services:** Redis cache (in-memory simulation), database backup management (PITR, snapshots), CDN configuration (rules, purge, stats), observability dashboard (latency histograms, throughput, error rates), BullMQ-like queue persistence (DLQ, retry, progress tracking), graceful shutdown (SIGTERM drain, Redis disconnect), enhanced health monitoring (dependency checks: DB, Redis, AI providers + system metrics).
 - **Background Jobs:** Asynchronous tasks like container cleanup, metrics collection, email processing, token cleanup, and deployment health checks.
 - **Authorization:** `requireProjectAccess(role)` middleware enforces access control based on user roles and project ownership/collaboration, including IDOR prevention.
 - **Issue Tracker:** Project-level issue tracking with status (open/in-progress/closed), labels (bug/feature/improvement), assignee from collaborators, code references (file+line), and threaded comments. API at `/projects/:id/issues`.
@@ -52,12 +53,17 @@ The frontend uses React 19, Vite, and Tailwind CSS v4, providing a responsive an
 - **Platform Services (288+ services):** Includes container engine, GitHub integration, notification system, explore/social, team management, activity feed, usage limits, webhooks, user onboarding, feature flags, support tickets, cloud functions, scheduled tasks, edge config, database backups, log streaming, API keys, search index, email service, SSO providers, IP filtering, session management, GDPR compliance, deployment strategies (blue-green/canary/rolling), platform metrics, GraphQL API, CLI tools, project archival, object storage, service mesh, learning paths, hackathons, workspace-sync, code-review-ai, container-snapshots, live-share, project-import, project-export, container-logs, user-preferences, build-cache, custom-runners, project-templates-store, debug-sessions, project-variables, resource-limits, project-badges, deploy-rollback, project-forks, code-formatting, project-milestones, user-activity-log.
 
 ## Stats
-- 322 API route files
-- 67 frontend pages
-- 62 DB schema files
+- 327 API route files
+- 72 frontend pages
+- 64 DB schema files
 
 ## Key Routes (Recent Additions)
-- `/api/autoscale/:projectId/*` — Autoscale policies (min/max replicas, strategies)
+- `/api/health` — Enhanced health endpoint (DB, Redis, AI provider checks, system metrics)
+- `/api/observability/*` — Observability metrics, latency histograms, AI gateway stats
+- `/api/queues/*` — Queue dashboard (jobs, DLQ, retry, purge)
+- `/api/backups/*` — Database backup management (PITR, snapshots, restore)
+- `/api/projects/:id/cdn/*` — CDN config, cache rules, purge, stats
+- `/api/autoscale/:projectId/*` — Autoscale policies (min/max replicas, strategies, cooldowns)
 - `/api/static-deploy/:projectId/*` — Static site deployments (10 frameworks, CDN)
 - `/api/baas/:projectId/*` — Backend-as-a-Service (DB, Auth, Storage, Functions)
 - `/api/mcp/:projectId/*` — MCP tool integration (servers, tools, execution)
@@ -116,7 +122,11 @@ The frontend uses React 19, Vite, and Tailwind CSS v4, providing a responsive an
 - `/revenue-analytics` — Platform revenue tracking
 - `/image-registry` — Container image registry
 - `/code-metrics` — Code quality and metrics
-- `/container-health` — Container health monitoring
+- `/container-health` — Container health monitoring (resources, dependencies, time-series)
+- `/admin/observability` — Platform observability dashboard
+- `/admin/queues` — Queue management dashboard
+- `/settings/backups` — Database backup management
+- `/cdn-config` — CDN configuration
 - `/live-session` — Real-time collaboration sessions
 - `/developer-settings` — Developer API and app settings
 - `/template-store` — Project template marketplace
@@ -127,7 +137,7 @@ The frontend uses React 19, Vite, and Tailwind CSS v4, providing a responsive an
 ## DB Schemas Added (Recent)
 - `db_sync_logs`, `todos`, `exec_history`, `wiki_pages`, `wiki_page_versions`, `coding_stats`, `coding_streaks`, `incidents`, `incident_updates`, `milestones`, `milestone_tasks`, `issues` (with JSONB code references).
 - `two-factor-secrets`, `sso-configurations`, `user-sessions`, `org-policies`, `login-history`, `ip-allowlist`.
-- `dsar-requests`, `user-consents`, `data-retention-policies` (GDPR compliance).
+- `dsar-requests`, `user-consents`, `data-retention-policies` (GDPR compliance), `database_backups`, `scaling_rules`.
 
 
 ## External Dependencies

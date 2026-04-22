@@ -62,6 +62,16 @@ import BuildHubWorkspace from "@/pages/buildhub-workspace";
 import BountiesPage from "@/pages/bounties";
 import MultiAiPage from "@/pages/multi-ai";
 import DifferentiatorsPage from "@/pages/differentiators";
+import AutoscalePage from "@/pages/autoscale";
+import StaticDeployPage from "@/pages/static-deploy";
+import BaasPage from "@/pages/baas";
+import McpToolsPage from "@/pages/mcp-tools";
+import WhiteLabelPage from "@/pages/white-label";
+import RbacPage from "@/pages/rbac";
+import DesignTokensPage from "@/pages/design-tokens";
+import SharingPage from "@/pages/sharing";
+import PublishingControlsPage from "@/pages/publishing-controls";
+import KnowledgeBasePage from "@/pages/knowledge-base";
 import NotFound from "@/pages/not-found";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -362,6 +372,36 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/differentiators">
               <ProtectedRoute component={DifferentiatorsPage} />
+            </Route>
+            <Route path="/autoscale">
+              <ProtectedRoute component={AutoscalePage} />
+            </Route>
+            <Route path="/static-deploy">
+              <ProtectedRoute component={StaticDeployPage} />
+            </Route>
+            <Route path="/baas">
+              <ProtectedRoute component={BaasPage} />
+            </Route>
+            <Route path="/mcp-tools">
+              <ProtectedRoute component={McpToolsPage} />
+            </Route>
+            <Route path="/white-label">
+              <ProtectedRoute component={WhiteLabelPage} />
+            </Route>
+            <Route path="/rbac">
+              <ProtectedRoute component={RbacPage} />
+            </Route>
+            <Route path="/design-tokens">
+              <ProtectedRoute component={DesignTokensPage} />
+            </Route>
+            <Route path="/sharing">
+              <ProtectedRoute component={SharingPage} />
+            </Route>
+            <Route path="/publishing">
+              <ProtectedRoute component={PublishingControlsPage} />
+            </Route>
+            <Route path="/knowledge-base">
+              <ProtectedRoute component={KnowledgeBasePage} />
             </Route>
             <Route path="/bounties" component={BountiesPage} />
             <Route path="/bounties/:id" component={BountiesPage} />

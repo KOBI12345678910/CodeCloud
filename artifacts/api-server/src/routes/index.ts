@@ -309,6 +309,16 @@ import scimRouter from "./scim";
 import designTemplatesRouter from "./design-templates";
 import aiBenchmarkRouter from "./ai-benchmark";
 import differentiatorsRouter from "./differentiators";
+import autoscaleRouter from "./autoscale";
+import staticDeploymentsRouter from "./static-deployments";
+import baasRouter from "./baas";
+import mcpToolsRouter from "./mcp-tools";
+import whiteLabelRouter from "./white-label";
+import internalPublishRouter from "./internal-publish";
+import designTokensRouter from "./design-tokens";
+import sharingControlsRouter from "./sharing-controls";
+import publishingControlsRouter from "./publishing-controls";
+import knowledgeBaseRouter from "./knowledge-base";
 
 const router: IRouter = Router();
 
@@ -624,5 +634,15 @@ router.use(mobileRouter);
 router.use(buildhubRouter);
 router.use(bountiesRouter);
 router.use("/differentiators", differentiatorsRouter);
+router.use(autoscaleRouter);
+router.use(staticDeploymentsRouter);
+router.use(baasRouter);
+router.use(mcpToolsRouter);
+router.use(whiteLabelRouter);
+router.use(internalPublishRouter);
+router.use(designTokensRouter);
+router.use(sharingControlsRouter);
+router.use(publishingControlsRouter);
+router.use(knowledgeBaseRouter);
 
 export default router;

@@ -108,6 +108,10 @@ import GitGraph from "@/components/ide/GitGraph";
 import InlineTestRunner from "@/components/ide/InlineTestRunner";
 import { NginxConfigEditor } from "@/components/NginxConfigEditor";
 import DatabaseConsole from "@/components/ide/DatabaseConsole";
+import GitPanel from "@/components/ide/GitPanel";
+import EnvEditor from "@/components/ide/EnvEditor";
+import DatabaseViewer from "@/components/ide/DatabaseViewer";
+import PackagesPanel from "@/components/ide/PackagesPanel";
 import PreviewAnnotator from "@/components/PreviewAnnotator";
 import CSSVisualizer from "@/components/ide/CSSVisualizer";
 import FileTreeSearch from "@/components/ide/FileTreeSearch";
@@ -1520,12 +1524,12 @@ export default function ProjectPage({ id }: { id: string }) {
     );
   }
 
-  const [activeSidebarTab, setActiveSidebarTab] = useState<"files" | "search" | "git" | "extensions" | "settings" | "issues">("files");
+  const [activeSidebarTab, setActiveSidebarTab] = useState<"files" | "search" | "git" | "secrets" | "packages" | "database" | "extensions" | "settings" | "issues">("files");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
     <div className="h-screen w-screen flex flex-col bg-background overflow-hidden" data-testid="project-page">
-      <header className="h-11 border-b border-border/50 flex items-center px-2 shrink-0 bg-background gap-1" data-testid="header-bar">
+      <header className="h-11 border-b border-sidebar-border flex items-center px-2 shrink-0 bg-sidebar gap-1" data-testid="header-bar">
         <Link href="/dashboard">
           <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-back">
             <ArrowLeft className="w-4 h-4" />
@@ -1580,6 +1584,7 @@ export default function ProjectPage({ id }: { id: string }) {
             </Button>
           ) : (
             <Button size="sm" className="h-7 px-3 text-xs gap-1.5 bg-red-500 hover:bg-red-600 text-white" onClick={handleStop} data-testid="button-stop">
+              <Loader2 className="w-3 h-3 animate-spin" />
               <Square className="w-3 h-3" /> Stop
             </Button>
           )}
@@ -1794,66 +1799,80 @@ export default function ProjectPage({ id }: { id: string }) {
       )}
 
       <div className="flex-1 flex overflow-hidden">
-        <div className="w-12 bg-card/80 border-r border-border/50 flex flex-col items-center py-2 gap-1 shrink-0" data-testid="activity-bar">
+        <div className="w-12 bg-sidebar border-r border-sidebar-border flex flex-col items-center py-1.5 gap-0.5 shrink-0" data-testid="activity-bar">
           {([
-            { id: "files" as const, icon: FolderOpen, label: "Explorer" },
+            { id: "files" as const, icon: FolderOpen, label: "Files" },
             { id: "search" as const, icon: Search, label: "Search" },
-            { id: "git" as const, icon: GitBranch, label: "Source Control" },
+            { id: "git" as const, icon: GitBranch, label: "Git" },
+            { id: "secrets" as const, icon: KeyRound, label: "Secrets" },
+            { id: "packages" as const, icon: Package, label: "Packages" },
+            { id: "database" as const, icon: Database, label: "Database" },
             { id: "issues" as const, icon: Bug, label: "Issues" },
             { id: "extensions" as const, icon: Puzzle, label: "Extensions" },
             { id: "settings" as const, icon: Settings, label: "Settings" },
-          ] as const).map(item => (
+          ] as const).map(item => {
+            const isActive = activeSidebarTab === item.id && !sidebarCollapsed;
+            return (
             <button
               key={item.id}
               onClick={() => {
+                if (item.id === "settings") { window.location.href = "/settings"; return; }
                 if (activeSidebarTab === item.id && !sidebarCollapsed) {
                   setSidebarCollapsed(true);
                 } else {
                   setActiveSidebarTab(item.id);
                   setSidebarCollapsed(false);
                 }
-                if (item.id === "search") setShowRegexSearch(v => !v);
-                if (item.id === "git") setShowGitGraph(v => !v);
-                if (item.id === "issues") setShowIssues(v => !v);
-                if (item.id === "extensions") setShowExtensions(v => !v);
-                if (item.id === "settings") window.location.href = "/settings";
               }}
-              className={`relative w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
-                activeSidebarTab === item.id && !sidebarCollapsed
-                  ? "bg-primary/10 text-primary border-l-2 border-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              className={`relative w-10 h-10 flex items-center justify-center rounded-md transition-colors ${
+                isActive
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
               }`}
               title={item.label}
               data-testid={`activity-${item.id}`}
             >
-              <item.icon className="w-5 h-5" />
+              <item.icon className="w-[18px] h-[18px]" />
               {item.id === "issues" && issueCountTotal > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-primary text-primary-foreground rounded-full px-1" data-testid="nav-issue-count">
+                <span className="absolute top-1 right-1 min-w-[15px] h-[15px] flex items-center justify-center text-[9px] font-bold bg-primary text-primary-foreground rounded-full px-1 leading-none" data-testid="nav-issue-count">
                   {issueCountTotal}
                 </span>
               )}
             </button>
-          ))}
+          );})}
           <div className="flex-1" />
           <button
             onClick={() => setShowAiChat(v => !v)}
-            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
-              showAiChat ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            className={`w-10 h-10 flex items-center justify-center rounded-md transition-colors ${
+              showAiChat ? "bg-accent text-primary" : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
             }`}
             title="AI Assistant"
             data-testid="activity-ai"
           >
-            <Bot className="w-5 h-5" />
+            <Bot className="w-[18px] h-[18px]" />
           </button>
         </div>
 
       <DropZone projectId={id} targetPath="" onUpload={handleDropUpload} onUploadComplete={handleDropComplete}>
       <PanelGroup direction="horizontal" className="flex-1">
+        {!sidebarCollapsed && (
         <Panel defaultSize={18} minSize={12} maxSize={30}>
-          <div className="h-full border-r border-border/50 flex flex-col bg-card/50">
-            <div className="px-3 py-2 flex items-center justify-between border-b border-border/30">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Files</span>
+          <div className="h-full border-r border-sidebar-border flex flex-col bg-sidebar" data-testid={`side-panel-${activeSidebarTab}`}>
+            <div className="px-3 h-9 flex items-center justify-between border-b border-sidebar-border/70 shrink-0">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {activeSidebarTab === "files" && "Files"}
+                {activeSidebarTab === "search" && "Search"}
+                {activeSidebarTab === "git" && "Source Control"}
+                {activeSidebarTab === "secrets" && "Secrets"}
+                {activeSidebarTab === "packages" && "Packages"}
+                {activeSidebarTab === "database" && "Database"}
+                {activeSidebarTab === "issues" && "Issues"}
+                {activeSidebarTab === "extensions" && "Extensions"}
+                {activeSidebarTab === "settings" && "Settings"}
+              </span>
               <div className="flex items-center gap-0.5">
+                {activeSidebarTab === "files" && (
+                  <>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1874,9 +1893,86 @@ export default function ProjectPage({ id }: { id: string }) {
                 >
                   <FolderPlus className="w-3.5 h-3.5" />
                 </Button>
+                  </>
+                )}
+                {activeSidebarTab === "git" && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5"
+                    onClick={() => setShowGitGraph((v) => !v)}
+                    title="View commit graph"
+                    data-testid="button-git-graph"
+                  >
+                    <GitBranch className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+                {activeSidebarTab === "search" && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5"
+                    onClick={() => setShowRegexSearch((v) => !v)}
+                    title="Find & replace in files"
+                    data-testid="button-regex-search"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+                {activeSidebarTab === "database" && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5"
+                    onClick={() => setShowDbConsole((v) => !v)}
+                    title="Open SQL console"
+                    data-testid="button-db-console"
+                  >
+                    <Terminal className="w-3.5 h-3.5" />
+                  </Button>
+                )}
               </div>
             </div>
 
+            {activeSidebarTab !== "files" && (
+              <div className="flex-1 overflow-y-auto" data-testid={`side-panel-content-${activeSidebarTab}`}>
+                {activeSidebarTab === "search" && (
+                  <div className="p-2">
+                    <FileTreeSearch
+                      files={files || []}
+                      onSelectFile={(f) => {
+                        const match = (files || []).find((x) => x.id === f.id);
+                        if (match) selectFile(match);
+                      }}
+                    />
+                  </div>
+                )}
+                {activeSidebarTab === "git" && (
+                  <GitPanel projectId={id} files={files || []} />
+                )}
+                {activeSidebarTab === "secrets" && (
+                  <EnvEditor />
+                )}
+                {activeSidebarTab === "packages" && (
+                  <PackagesPanel />
+                )}
+                {activeSidebarTab === "database" && (
+                  <DatabaseViewer projectId={id} />
+                )}
+                {activeSidebarTab === "issues" && (
+                  <div className="p-3 text-xs text-muted-foreground">
+                    {issueCountTotal > 0 ? `${issueCountTotal} open issue${issueCountTotal === 1 ? "" : "s"}` : "No issues reported"}
+                  </div>
+                )}
+                {activeSidebarTab === "extensions" && (
+                  <div className="p-3 text-xs text-muted-foreground">
+                    Browse and install workspace extensions from the marketplace.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeSidebarTab === "files" && (
             <div className="flex-1 overflow-y-auto py-1" data-testid="file-tree">
               {(creatingFile || creatingFolder) && (
                 <div className="px-2 py-1 flex items-center gap-1">
@@ -1923,6 +2019,7 @@ export default function ProjectPage({ id }: { id: string }) {
                 </div>
               )}
             </div>
+            )}
             <div className="border-t border-border/30 mt-auto">
               <ResourceMonitor
                 gpuEnabled={project?.gpuEnabled ?? false}
@@ -1932,8 +2029,11 @@ export default function ProjectPage({ id }: { id: string }) {
             </div>
           </div>
         </Panel>
+        )}
 
-        <PanelResizeHandle className="w-[3px] hover:bg-primary/40 transition-colors" />
+        {!sidebarCollapsed && (
+          <PanelResizeHandle className="w-[5px] bg-transparent hover:bg-primary transition-colors" />
+        )}
 
         <Panel defaultSize={50} minSize={30}>
           <PanelGroup direction="vertical">
@@ -1942,7 +2042,7 @@ export default function ProjectPage({ id }: { id: string }) {
                 {panes.map((pane, idx) => (
                   <Fragment key={idx}>
                     {idx > 0 && (
-                      <PanelResizeHandle className="w-[3px] hover:bg-primary/40 transition-colors" />
+                      <PanelResizeHandle className="w-[5px] bg-transparent hover:bg-primary transition-colors" />
                     )}
                     <Panel defaultSize={Math.floor(100 / panes.length)} minSize={20}>
                       <EditorPaneView
@@ -1981,7 +2081,7 @@ export default function ProjectPage({ id }: { id: string }) {
               </PanelGroup>
             </Panel>
 
-            <PanelResizeHandle className="h-[3px] hover:bg-primary/40 transition-colors" />
+            <PanelResizeHandle className="h-[5px] bg-transparent hover:bg-primary transition-colors" />
 
             <Panel defaultSize={30} minSize={10} maxSize={50}>
               <TerminalPanel
@@ -2008,7 +2108,7 @@ export default function ProjectPage({ id }: { id: string }) {
           </PanelGroup>
         </Panel>
 
-        <PanelResizeHandle className="w-[3px] hover:bg-primary/40 transition-colors" />
+        <PanelResizeHandle className="w-[5px] bg-transparent hover:bg-primary transition-colors" />
 
         <Panel defaultSize={32} minSize={15} maxSize={50}>
           <MultiPreview

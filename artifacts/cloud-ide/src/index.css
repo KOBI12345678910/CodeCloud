@@ -118,44 +118,44 @@
 }
 
 .dark {
-  --background: 222 47% 11%;
-  --foreground: 210 40% 98%;
+  --background: 224 39% 10%;
+  --foreground: 210 33% 96%;
 
-  --border: 217 33% 17%;
-  --input: 217 33% 17%;
-  --ring: 224 76% 48%;
+  --border: 222 22% 22%;
+  --input: 222 22% 18%;
+  --ring: 213 100% 53%;
 
-  --card: 222 47% 11%;
-  --card-foreground: 210 40% 98%;
-  --card-border: 217 33% 17%;
+  --card: 222 28% 14%;
+  --card-foreground: 210 33% 96%;
+  --card-border: 222 22% 22%;
 
-  --popover: 222 47% 11%;
-  --popover-foreground: 210 40% 98%;
-  --popover-border: 217 33% 17%;
+  --popover: 222 28% 14%;
+  --popover-foreground: 210 33% 96%;
+  --popover-border: 222 22% 22%;
 
-  --primary: 224 76% 48%;
-  --primary-foreground: 210 40% 98%;
+  --primary: 213 100% 53%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 217 33% 17%;
-  --secondary-foreground: 210 40% 98%;
+  --secondary: 222 22% 18%;
+  --secondary-foreground: 210 33% 96%;
 
-  --muted: 217 33% 17%;
-  --muted-foreground: 215 20.2% 65.1%;
+  --muted: 222 22% 18%;
+  --muted-foreground: 217 13% 65%;
 
-  --accent: 217 33% 17%;
-  --accent-foreground: 210 40% 98%;
+  --accent: 222 22% 20%;
+  --accent-foreground: 210 33% 96%;
 
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive: 0 75% 60%;
+  --destructive-foreground: 0 0% 100%;
 
-  --sidebar: 222 47% 11%;
-  --sidebar-foreground: 210 40% 98%;
-  --sidebar-border: 217 33% 17%;
-  --sidebar-primary: 224 76% 48%;
-  --sidebar-primary-foreground: 210 40% 98%;
-  --sidebar-accent: 217 33% 17%;
-  --sidebar-accent-foreground: 210 40% 98%;
-  --sidebar-ring: 224 76% 48%;
+  --sidebar: 222 28% 14%;
+  --sidebar-foreground: 210 33% 96%;
+  --sidebar-border: 222 22% 22%;
+  --sidebar-primary: 213 100% 53%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 222 22% 18%;
+  --sidebar-accent-foreground: 210 33% 96%;
+  --sidebar-ring: 213 100% 53%;
 }
 
 @layer base {
@@ -172,6 +172,50 @@ html {
 }
 html.dark {
   color-scheme: dark;
+}
+
+.dark ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.dark ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(222, 22%, 24%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 6px;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(222, 18%, 34%);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+.dark ::-webkit-scrollbar-corner {
+  background: transparent;
+}
+.dark * {
+  scrollbar-color: hsl(222, 22%, 24%) transparent;
+  scrollbar-width: thin;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.dark :focus-visible {
+  outline: 2px solid hsl(213, 100%, 53%);
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+
+[data-panel-resize-handle-id]:hover,
+[data-panel-resize-handle-id][data-resize-handle-active] {
+  background: hsl(213, 100%, 53%) !important;
+  transition: background 120ms ease;
 }
 
 .remote-cursor-line {

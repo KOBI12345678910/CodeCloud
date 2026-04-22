@@ -2,11 +2,30 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
-import { Bot, Send, X, Plus, Trash2, History, Loader2, Copy, Check, Wand2, FilePlus, FileEdit, FileX, ChevronRight, ChevronDown, Sparkles } from "lucide-react";
+import { Bot, Send, X, Plus, Trash2, History, Loader2, Copy, Check, Wand2, FilePlus, FileEdit, FileX, ChevronRight, ChevronDown, Sparkles, Cpu, GitCompareArrows } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Role = "user" | "assistant";
-interface ChatMessage { role: Role; content: string }
+interface UsageInfo { inputTokens: number; outputTokens: number; cost: number; latencyMs?: number; modelLabel?: string }
+interface ChatMessage { role: Role; content: string; usage?: UsageInfo }
+
+interface MultiModel {
+  id: string;
+  label: string;
+  provider: string;
+  description: string;
+  pricing: { inputPer1M: number; outputPer1M: number };
+  available: boolean;
+}
+interface CompareResult {
+  modelId: string;
+  label: string;
+  ok: boolean;
+  content?: string;
+  error?: string;
+  usage?: { inputTokens: number; outputTokens: number; cost: number };
+  latencyMs?: number;
+}
 interface Conversation {
   id: string;
   title: string | null;
@@ -76,6 +95,20 @@ export default function AiPanel({
   const [error, setError] = useState<string | null>(null);
   const [autoScaffold, setAutoScaffold] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [multiModels, setMultiModels] = useState<MultiModel[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+  const [showModelMenu, setShowModelMenu] = useState(false);
+  const [showCompare, setShowCompare] = useState(false);
+
+  useEffect(() => {
+    fetch(`${apiBase}/ai/multi/models`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.models) setMultiModels(d.models); })
+      .catch(() => {});
+  }, []);
+
+  const selectedModel = multiModels.find(m => m.id === selectedModelId) || null;
+  const useMultiEndpoint = mode === "chat" && !!selectedModel;
 
   const fetchConversations = useCallback(() => {
     fetch(`${apiBase}/ai/conversations?projectId=${projectId}`, { credentials: "include" })
@@ -161,6 +194,36 @@ export default function AiPanel({
     setMessages(prev => [...prev, { role: "user", content: userText }]);
 
     try {
+      if (useMultiEndpoint && selectedModel) {
+        const history: ChatMessage[] = [...messages, { role: "user", content: userText }];
+        const res = await fetch(`${apiBase}/ai/multi/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            modelId: selectedModel.id,
+            messages: history.map(m => ({ role: m.role, content: m.content })),
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(data.error || `Request failed (${res.status})`);
+          setMessages(prev => prev.slice(0, -1));
+          return;
+        }
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          content: data.content || "(empty response)",
+          usage: {
+            inputTokens: data.usage?.inputTokens ?? 0,
+            outputTokens: data.usage?.outputTokens ?? 0,
+            cost: data.usage?.cost ?? 0,
+            latencyMs: data.latencyMs,
+            modelLabel: data.label || selectedModel.label,
+          },
+        }]);
+        return;
+      }
       if (mode === "chat") {
         setMessages(prev => [...prev, { role: "assistant", content: "" }]);
         const res = await fetch(`${apiBase}/ai/${modeDef.endpoint}?stream=1`, {
@@ -276,6 +339,56 @@ export default function AiPanel({
           )}
         </div>
         <div className="flex items-center gap-0.5">
+          <div className="relative">
+            <button
+              onClick={() => setShowModelMenu(v => !v)}
+              className="flex items-center gap-1 px-1.5 h-6 rounded text-[10px] bg-muted/40 hover:bg-muted text-foreground"
+              title="Choose AI model"
+              data-testid="button-ai-model"
+            >
+              <Cpu className="w-3 h-3 text-primary" />
+              <span className="max-w-[80px] truncate">{selectedModel?.label || "Default"}</span>
+              <ChevronDown className="w-2.5 h-2.5 opacity-60" />
+            </button>
+            {showModelMenu && (
+              <div className="absolute right-0 top-7 w-72 z-50 bg-popover border border-border rounded-md shadow-lg p-1" data-testid="ai-model-menu">
+                <button
+                  onClick={() => { setSelectedModelId(null); setShowModelMenu(false); }}
+                  className={`w-full text-left px-2 py-1.5 rounded text-[11px] hover:bg-accent/40 ${!selectedModelId ? "bg-accent/30" : ""}`}
+                >
+                  <div className="font-medium">Default (streaming)</div>
+                  <div className="text-[10px] text-muted-foreground">Server-managed model with SSE streaming.</div>
+                </button>
+                <div className="h-px bg-border my-1" />
+                {multiModels.map(m => (
+                  <button
+                    key={m.id}
+                    onClick={() => { setSelectedModelId(m.id); setShowModelMenu(false); }}
+                    disabled={!m.available}
+                    className={`w-full text-left px-2 py-1.5 rounded text-[11px] flex items-start justify-between gap-2 ${selectedModelId === m.id ? "bg-accent/30" : "hover:bg-accent/40"} ${!m.available ? "opacity-50 cursor-not-allowed" : ""}`}
+                    data-testid={`ai-model-option-${m.id}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{m.label}</div>
+                      <div className="text-[10px] text-muted-foreground truncate">{m.description}</div>
+                      <div className="text-[9px] text-muted-foreground mt-0.5">
+                        ${m.pricing.inputPer1M.toFixed(2)}/1M in · ${m.pricing.outputPer1M.toFixed(2)}/1M out
+                      </div>
+                    </div>
+                    {!m.available && <span className="text-[9px] uppercase text-amber-400 shrink-0">no key</span>}
+                  </button>
+                ))}
+                <div className="h-px bg-border my-1" />
+                <button
+                  onClick={() => { setShowModelMenu(false); setShowCompare(true); }}
+                  className="w-full text-left px-2 py-1.5 rounded text-[11px] hover:bg-accent/40 flex items-center gap-1.5"
+                  data-testid="button-open-compare"
+                >
+                  <GitCompareArrows className="w-3 h-3" /> Compare models side-by-side…
+                </button>
+              </div>
+            )}
+          </div>
           <Button variant="ghost" size="icon" className="h-6 w-6" title="History" onClick={() => setShowHistory(v => !v)} data-testid="button-ai-history">
             <History className="w-3 h-3" />
           </Button>
@@ -287,6 +400,13 @@ export default function AiPanel({
           </Button>
         </div>
       </div>
+
+      {showCompare && (
+        <CompareDialog
+          models={multiModels}
+          onClose={() => setShowCompare(false)}
+        />
+      )}
 
       <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border/30 overflow-x-auto shrink-0">
         {MODES.map(m => (
@@ -496,9 +616,22 @@ function MessageBubble({
   onInsert: (code: string) => void;
 }) {
   const isUser = message.role === "user";
+  const u = message.usage;
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div className={`max-w-[95%] rounded-lg px-3 py-2 text-xs ${isUser ? "bg-primary/20 text-foreground" : "bg-muted/50 text-foreground w-full"}`}>
+        {!isUser && u && (
+          <div className="flex items-center gap-1.5 text-[9.5px] text-muted-foreground mb-1.5 pb-1.5 border-b border-border/30" data-testid="message-usage">
+            {u.modelLabel && <span className="font-semibold text-foreground/80">{u.modelLabel}</span>}
+            <span>·</span>
+            <span>{u.inputTokens.toLocaleString()} in</span>
+            <span>·</span>
+            <span>{u.outputTokens.toLocaleString()} out</span>
+            <span>·</span>
+            <span className="text-emerald-400">${u.cost.toFixed(5)}</span>
+            {typeof u.latencyMs === "number" && <><span>·</span><span>{(u.latencyMs / 1000).toFixed(2)}s</span></>}
+          </div>
+        )}
         {isUser ? (
           <pre className="whitespace-pre-wrap font-sans">{message.content}</pre>
         ) : (
@@ -558,6 +691,127 @@ function CodeBlock({ children, onApply, onInsert }: { children: React.ReactNode;
       <pre ref={ref} className="bg-background/80 rounded p-2 overflow-x-auto text-[11px] leading-relaxed">
         {children}
       </pre>
+    </div>
+  );
+}
+
+function CompareDialog({ models, onClose }: { models: MultiModel[]; onClose: () => void }) {
+  const available = models.filter(m => m.available);
+  const [prompt, setPrompt] = useState("");
+  const [picked, setPicked] = useState<Set<string>>(new Set(available.slice(0, 3).map(m => m.id)));
+  const [running, setRunning] = useState(false);
+  const [results, setResults] = useState<CompareResult[] | null>(null);
+
+  const togglePick = (id: string) => setPicked(prev => {
+    const n = new Set(prev);
+    if (n.has(id)) n.delete(id); else n.add(id);
+    return n;
+  });
+
+  const run = async () => {
+    if (!prompt.trim() || picked.size === 0) return;
+    setRunning(true);
+    setResults(null);
+    try {
+      const res = await fetch(`${apiBase}/ai/multi/compare`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          modelIds: Array.from(picked),
+          messages: [{ role: "user", content: prompt.trim() }],
+        }),
+      });
+      const data = await res.json();
+      setResults(data.results || []);
+    } catch (e) {
+      setResults([{ modelId: "err", label: "Error", ok: false, error: e instanceof Error ? e.message : "Network error" }]);
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4" onClick={onClose} data-testid="ai-compare-dialog">
+      <div className="bg-card border border-border rounded-lg w-full max-w-5xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
+          <div className="flex items-center gap-2">
+            <GitCompareArrows className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold">Compare AI Models</span>
+          </div>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}><X className="w-3.5 h-3.5" /></Button>
+        </div>
+        <div className="p-4 space-y-3 border-b border-border">
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Ask the same question to multiple models…"
+            rows={3}
+            className="w-full bg-muted/30 border border-border/50 rounded px-2.5 py-2 text-sm outline-none focus:border-primary/50 resize-none"
+            data-testid="input-compare-prompt"
+          />
+          <div className="flex flex-wrap items-center gap-1.5">
+            {models.map(m => (
+              <button
+                key={m.id}
+                disabled={!m.available}
+                onClick={() => togglePick(m.id)}
+                className={`text-[11px] px-2 py-1 rounded border ${
+                  picked.has(m.id) ? "bg-primary text-primary-foreground border-primary" : "bg-muted/40 border-border/60 hover:bg-muted"
+                } ${!m.available ? "opacity-40 cursor-not-allowed" : ""}`}
+                title={m.available ? m.description : "Provider key not configured"}
+                data-testid={`compare-pick-${m.id}`}
+              >
+                {m.label}
+              </button>
+            ))}
+            <div className="flex-1" />
+            <Button size="sm" className="h-7 text-xs gap-1" onClick={run} disabled={running || !prompt.trim() || picked.size === 0} data-testid="button-run-compare">
+              {running ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              {running ? "Running…" : `Run on ${picked.size} model${picked.size === 1 ? "" : "s"}`}
+            </Button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto p-4">
+          {!results && !running && (
+            <div className="text-center text-muted-foreground text-sm py-12">
+              Pick 2 or more models, type a prompt, and run.
+            </div>
+          )}
+          {running && (
+            <div className="text-center text-muted-foreground text-sm py-12 flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" /> Querying {picked.size} model{picked.size === 1 ? "" : "s"} in parallel…
+            </div>
+          )}
+          {results && (
+            <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(results.length, 3)}, minmax(0, 1fr))` }}>
+              {results.map(r => (
+                <div key={r.modelId} className="border border-border rounded-md flex flex-col" data-testid={`compare-result-${r.modelId}`}>
+                  <div className="px-3 py-2 border-b border-border flex items-center justify-between">
+                    <span className="text-xs font-semibold">{r.label}</span>
+                    {r.ok && r.usage && (
+                      <span className="text-[10px] text-emerald-400">${r.usage.cost.toFixed(5)}</span>
+                    )}
+                  </div>
+                  {r.ok ? (
+                    <>
+                      <div className="px-3 py-3 text-xs overflow-auto max-h-80 prose-invert">
+                        <ReactMarkdown rehypePlugins={[rehypeHighlight]}>{r.content || ""}</ReactMarkdown>
+                      </div>
+                      <div className="px-3 py-1.5 border-t border-border text-[10px] text-muted-foreground flex items-center justify-between">
+                        <span>{r.usage?.inputTokens.toLocaleString()} in · {r.usage?.outputTokens.toLocaleString()} out</span>
+                        {typeof r.latencyMs === "number" && <span>{(r.latencyMs / 1000).toFixed(2)}s</span>}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="px-3 py-3 text-xs text-destructive">{r.error}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

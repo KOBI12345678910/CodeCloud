@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, usersTable, apiKeysTable, projectSecretsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { requireAuth, requireProjectAccess } from "../middlewares/requireAuth";
 import type { AuthenticatedRequest } from "../types";
 import { randomBytes, createHash, createCipheriv, createDecipheriv, scryptSync } from "crypto";
@@ -32,6 +32,25 @@ function decryptSecret(encrypted: string): string {
 }
 
 const router: IRouter = Router();
+
+router.get("/settings", requireAuth, async (req, res): Promise<void> => {
+  const { userId } = req as AuthenticatedRequest;
+  const user = await db.select({
+    id: usersTable.id,
+    email: usersTable.email,
+    username: usersTable.username,
+    displayName: usersTable.displayName,
+    plan: usersTable.plan,
+    role: usersTable.role,
+    avatarUrl: usersTable.avatarUrl,
+    storageUsedBytes: usersTable.storageUsedBytes,
+    createdAt: usersTable.createdAt,
+    lastLoginAt: usersTable.lastLoginAt,
+  }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!user.length) { res.status(404).json({ error: "User not found" }); return; }
+  const keyCount = await db.select({ count: sql`count(*)` }).from(apiKeysTable).where(eq(apiKeysTable.userId, userId));
+  res.json({ user: user[0], apiKeyCount: Number(keyCount[0]?.count ?? 0) });
+});
 
 router.get("/settings/api-keys", requireAuth, async (req, res): Promise<void> => {
   const { userId } = req as AuthenticatedRequest;

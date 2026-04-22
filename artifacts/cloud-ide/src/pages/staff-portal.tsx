@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "wouter";
 import { useUser } from "@clerk/react";
+import { useAuthStore } from "@/stores/authStore";
 import {
   Shield, Users, DollarSign, Settings, BarChart3, Headphones,
   Package, Activity, ChevronRight, Search, Bell, LogOut,
@@ -61,26 +62,6 @@ const sidebarItems = [
   { id: "settings" as const, label: "הגדרות מערכת", icon: Settings },
 ];
 
-const mockCustomers: StaffUser[] = [
-  { id: "u1", name: "Yael Cohen", email: "yael@startup.io", plan: "Pro", status: "active", projects: 12, spent: 4560, joinedAt: "2025-03-15", lastActive: "2026-04-22", country: "IL" },
-  { id: "u2", name: "David Kim", email: "david@enterprise.co", plan: "Enterprise", status: "active", projects: 45, spent: 28900, joinedAt: "2024-11-02", lastActive: "2026-04-22", country: "US" },
-  { id: "u3", name: "Maria Santos", email: "maria@dev.br", plan: "Core", status: "active", projects: 8, spent: 1240, joinedAt: "2025-06-20", lastActive: "2026-04-21", country: "BR" },
-  { id: "u4", name: "Liam O'Brien", email: "liam@agency.ie", plan: "Pro", status: "suspended", projects: 3, spent: 890, joinedAt: "2025-09-10", lastActive: "2026-03-15", country: "IE" },
-  { id: "u5", name: "Chen Wei", email: "chen@tech.cn", plan: "Free", status: "active", projects: 2, spent: 0, joinedAt: "2026-01-05", lastActive: "2026-04-20", country: "CN" },
-  { id: "u6", name: "Aisha Patel", email: "aisha@fintech.in", plan: "Enterprise", status: "active", projects: 67, spent: 45200, joinedAt: "2024-06-12", lastActive: "2026-04-22", country: "IN" },
-  { id: "u7", name: "Tom Mueller", email: "tom@startup.de", plan: "Core", status: "trial", projects: 1, spent: 0, joinedAt: "2026-04-18", lastActive: "2026-04-22", country: "DE" },
-  { id: "u8", name: "Sophie Dubois", email: "sophie@design.fr", plan: "Pro", status: "active", projects: 15, spent: 3780, joinedAt: "2025-01-22", lastActive: "2026-04-21", country: "FR" },
-];
-
-const mockTickets: Ticket[] = [
-  { id: "T-1042", subject: "Deployment fails on Node 22 projects", customer: "David Kim", priority: "critical", status: "open", category: "Deployment", createdAt: "2026-04-22T10:30:00Z", assignee: "Support Team A" },
-  { id: "T-1041", subject: "Billing charge discrepancy — $45 overcharge", customer: "Aisha Patel", priority: "high", status: "in-progress", category: "Billing", createdAt: "2026-04-22T09:15:00Z", assignee: "Billing Team" },
-  { id: "T-1040", subject: "Cannot connect custom domain", customer: "Sophie Dubois", priority: "medium", status: "waiting", category: "Domains", createdAt: "2026-04-21T16:45:00Z", assignee: "Support Team B" },
-  { id: "T-1039", subject: "AI agent not responding in Python projects", customer: "Maria Santos", priority: "high", status: "open", category: "AI", createdAt: "2026-04-21T14:20:00Z", assignee: "AI Team" },
-  { id: "T-1038", subject: "Request to increase project limit", customer: "Yael Cohen", priority: "low", status: "resolved", category: "Account", createdAt: "2026-04-20T11:00:00Z", assignee: "Support Team A" },
-  { id: "T-1037", subject: "SSO integration not working with Okta", customer: "David Kim", priority: "critical", status: "in-progress", category: "Security", createdAt: "2026-04-20T08:30:00Z", assignee: "Security Team" },
-];
-
 const priorityColors: Record<string, string> = {
   critical: "bg-red-500/20 text-red-400 border-red-500/30",
   high: "bg-orange-500/20 text-orange-400 border-orange-500/30",
@@ -103,25 +84,58 @@ const planBadgeColors: Record<string, string> = {
 };
 
 function DashboardSection() {
+  const token = useAuthStore((s) => s.token);
+  const [stats, setStats] = useState<{ totalUsers: number; totalProjects: number; totalDeployments: number; recentUsers: any[] }>({ totalUsers: 0, totalProjects: 0, totalDeployments: 0, recentUsers: [] });
+  const [health, setHealth] = useState<{ status: string; uptime: number } | null>(null);
+  const [urgentTickets, setUrgentTickets] = useState<Ticket[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAll = async () => {
+      try {
+        const [statsR, healthR, ticketsR] = await Promise.allSettled([
+          fetch(`${apiUrl}/api/admin/stats`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${apiUrl}/api/health`),
+          fetch(`${apiUrl}/api/admin/tickets?limit=10`, { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
+        if (statsR.status === "fulfilled" && statsR.value.ok) setStats(await statsR.value.json());
+        if (healthR.status === "fulfilled" && healthR.value.ok) setHealth(await healthR.value.json());
+        if (ticketsR.status === "fulfilled" && ticketsR.value.ok) {
+          const tData = await ticketsR.value.json();
+          setUrgentTickets(tData.tickets.map((t: any) => ({
+            id: `T-${t.id}`,
+            subject: t.subject,
+            customer: t.customer,
+            priority: t.priority as "critical" | "high" | "medium" | "low",
+            status: t.status === "closed" ? "resolved" as const : t.status as "open" | "in-progress" | "waiting",
+            category: t.category,
+            createdAt: t.createdAt,
+            assignee: t.assignee,
+          })));
+        }
+      } catch {}
+      setLoading(false);
+    };
+    fetchAll();
+  }, [token]);
+
   const kpis = [
-    { label: "MRR", value: "$284,500", change: "+12.3%", up: true, icon: DollarSign },
-    { label: "לקוחות פעילים", value: "15,842", change: "+8.5%", up: true, icon: Users },
-    { label: "פרויקטים פעילים", value: "42,156", change: "+15.2%", up: true, icon: Code2 },
-    { label: "Deployments היום", value: "1,847", change: "-2.1%", up: false, icon: Server },
-    { label: "פניות פתוחות", value: "23", change: "-18%", up: true, icon: Headphones },
-    { label: "Uptime", value: "99.97%", change: "+0.02%", up: true, icon: Activity },
-    { label: "AI Requests/hr", value: "12,450", change: "+22%", up: true, icon: Cpu },
-    { label: "Churn Rate", value: "1.2%", change: "-0.3%", up: true, icon: TrendingDown },
+    { label: "סה\"כ משתמשים", value: stats.totalUsers.toLocaleString(), change: "DB", up: true, icon: Users },
+    { label: "פרויקטים", value: stats.totalProjects.toLocaleString(), change: "DB", up: true, icon: Code2 },
+    { label: "Deployments", value: stats.totalDeployments.toLocaleString(), change: "DB", up: true, icon: Server },
+    { label: "Uptime", value: health ? `${Math.floor(health.uptime)}s` : "N/A", change: health?.status === "ok" ? "online" : "offline", up: health?.status === "ok", icon: Activity },
+    { label: "פניות פתוחות", value: "—", change: "—", up: true, icon: Headphones },
+    { label: "AI Requests/hr", value: "—", change: "—", up: true, icon: Cpu },
+    { label: "Churn Rate", value: "—", change: "—", up: true, icon: TrendingDown },
+    { label: "MRR", value: "—", change: "—", up: true, icon: DollarSign },
   ];
 
-  const recentActivity = [
-    { action: "לקוח חדש נרשם", detail: "Tom Mueller — Enterprise Trial", time: "5 דקות", type: "user" },
-    { action: "תשלום התקבל", detail: "Aisha Patel — $2,400/mo", time: "12 דקות", type: "payment" },
-    { action: "פנייה קריטית נפתחה", detail: "T-1042 — Deployment fails", time: "25 דקות", type: "alert" },
-    { action: "Deploy הושלם", detail: "david/enterprise-app → production", time: "32 דקות", type: "deploy" },
-    { action: "לקוח שדרג", detail: "Chen Wei — Free → Core", time: "1 שעה", type: "upgrade" },
-    { action: "אזהרת אבטחה", detail: "5 ניסיונות כניסה כושלים — IP 185.x.x.x", time: "2 שעות", type: "security" },
-  ];
+  const recentActivity = stats.recentUsers.slice(0, 6).map((u: any) => ({
+    action: "לקוח נרשם",
+    detail: `${u.username || u.email} — ${u.plan || "Free"}`,
+    time: new Date(u.createdAt).toLocaleDateString("he-IL"),
+    type: "user" as const,
+  }));
 
   return (
     <div className="space-y-6">
@@ -189,12 +203,12 @@ function DashboardSection() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">פניות דחופות</CardTitle>
               <Link href="/staff/support">
-                <Button variant="ghost" size="sm" className="text-xs">הצג הכל <ChevronRight className="w-3 h-3 ml-1" /></Button>
+                <Button variant="ghost" size="sm" className="text-xs">הצג הכל <ChevronRight className="w-3 h-3 me-1" /></Button>
               </Link>
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
-            {mockTickets.filter(t => t.status !== "resolved").slice(0, 4).map((ticket) => (
+            {urgentTickets.filter(t => t.status !== "resolved").slice(0, 4).map((ticket) => (
               <div key={ticket.id} className="flex items-center gap-3 p-2.5 rounded-lg border border-border/30 hover:bg-muted/30 transition">
                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${priorityColors[ticket.priority]}`}>
                   {ticket.priority}
@@ -288,12 +302,44 @@ function DashboardSection() {
 }
 
 function CustomersSection() {
+  const token = useAuthStore((s) => s.token);
   const [search, setSearch] = useState("");
   const [filterPlan, setFilterPlan] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedUser, setSelectedUser] = useState<StaffUser | null>(null);
+  const [customers, setCustomers] = useState<StaffUser[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = mockCustomers.filter(c => {
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const res = await fetch(`${apiUrl}/api/admin/users?limit=100`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) {
+          const data = await res.json();
+          const normalizePlan = (p: string) => {
+            const m: Record<string, string> = { free: "Free", core: "Core", pro: "Pro", team: "Enterprise", enterprise: "Enterprise" };
+            return m[p?.toLowerCase()] || p || "Free";
+          };
+          setCustomers(data.users.map((u: any) => ({
+            id: u.id,
+            name: u.displayName || u.username || u.email?.split("@")[0] || "—",
+            email: u.email || "—",
+            plan: normalizePlan(u.plan),
+            status: u.lastLoginAt ? "active" : "trial",
+            projects: 0,
+            spent: 0,
+            joinedAt: u.createdAt ? new Date(u.createdAt).toLocaleDateString("he-IL") : "—",
+            lastActive: u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString("he-IL") : "—",
+            country: "—",
+          })));
+        }
+      } catch {}
+      setLoading(false);
+    };
+    fetchCustomers();
+  }, [token]);
+
+  const filtered = customers.filter(c => {
     if (search && !c.name.toLowerCase().includes(search.toLowerCase()) && !c.email.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterPlan !== "all" && c.plan !== filterPlan) return false;
     if (filterStatus !== "all" && c.status !== filterStatus) return false;
@@ -309,8 +355,8 @@ function CustomersSection() {
 
       <div className="flex gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="חפש לפי שם או אימייל..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="חפש לפי שם או אימייל..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-9" />
         </div>
         <select value={filterPlan} onChange={(e) => setFilterPlan(e.target.value)} className="px-3 py-2 rounded-lg bg-muted/30 border border-border/50 text-sm">
           <option value="all">כל התוכניות</option>
@@ -333,14 +379,14 @@ function CustomersSection() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border/50">
-                <th className="text-left p-3 text-xs font-medium text-muted-foreground">לקוח</th>
-                <th className="text-left p-3 text-xs font-medium text-muted-foreground">תוכנית</th>
-                <th className="text-left p-3 text-xs font-medium text-muted-foreground">סטטוס</th>
-                <th className="text-left p-3 text-xs font-medium text-muted-foreground">פרויקטים</th>
-                <th className="text-left p-3 text-xs font-medium text-muted-foreground">סה"כ חיוב</th>
-                <th className="text-left p-3 text-xs font-medium text-muted-foreground">פעילות אחרונה</th>
-                <th className="text-left p-3 text-xs font-medium text-muted-foreground">מדינה</th>
-                <th className="text-left p-3 text-xs font-medium text-muted-foreground">פעולות</th>
+                <th className="text-right p-3 text-xs font-medium text-muted-foreground">לקוח</th>
+                <th className="text-right p-3 text-xs font-medium text-muted-foreground">תוכנית</th>
+                <th className="text-right p-3 text-xs font-medium text-muted-foreground">סטטוס</th>
+                <th className="text-right p-3 text-xs font-medium text-muted-foreground">פרויקטים</th>
+                <th className="text-right p-3 text-xs font-medium text-muted-foreground">סה"כ חיוב</th>
+                <th className="text-right p-3 text-xs font-medium text-muted-foreground">פעילות אחרונה</th>
+                <th className="text-right p-3 text-xs font-medium text-muted-foreground">מדינה</th>
+                <th className="text-right p-3 text-xs font-medium text-muted-foreground">פעולות</th>
               </tr>
             </thead>
             <tbody>
@@ -523,12 +569,12 @@ function BillingSection() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border/50">
-                  <th className="text-left p-3 text-xs font-medium text-muted-foreground">שירות</th>
-                  <th className="text-left p-3 text-xs font-medium text-muted-foreground">מחיר</th>
-                  <th className="text-left p-3 text-xs font-medium text-muted-foreground">יחידה</th>
-                  <th className="text-left p-3 text-xs font-medium text-muted-foreground">לקוחות פעילים</th>
-                  <th className="text-left p-3 text-xs font-medium text-muted-foreground">הכנסה חודשית</th>
-                  <th className="text-left p-3 text-xs font-medium text-muted-foreground">פעולות</th>
+                  <th className="text-right p-3 text-xs font-medium text-muted-foreground">שירות</th>
+                  <th className="text-right p-3 text-xs font-medium text-muted-foreground">מחיר</th>
+                  <th className="text-right p-3 text-xs font-medium text-muted-foreground">יחידה</th>
+                  <th className="text-right p-3 text-xs font-medium text-muted-foreground">לקוחות פעילים</th>
+                  <th className="text-right p-3 text-xs font-medium text-muted-foreground">הכנסה חודשית</th>
+                  <th className="text-right p-3 text-xs font-medium text-muted-foreground">פעולות</th>
                 </tr>
               </thead>
               <tbody>
@@ -601,11 +647,11 @@ function BillingSection() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border/50">
-                    <th className="text-left p-3 text-xs font-medium text-muted-foreground">מספר</th>
-                    <th className="text-left p-3 text-xs font-medium text-muted-foreground">לקוח</th>
-                    <th className="text-left p-3 text-xs font-medium text-muted-foreground">סכום</th>
-                    <th className="text-left p-3 text-xs font-medium text-muted-foreground">סטטוס</th>
-                    <th className="text-left p-3 text-xs font-medium text-muted-foreground">תאריך</th>
+                    <th className="text-right p-3 text-xs font-medium text-muted-foreground">מספר</th>
+                    <th className="text-right p-3 text-xs font-medium text-muted-foreground">לקוח</th>
+                    <th className="text-right p-3 text-xs font-medium text-muted-foreground">סכום</th>
+                    <th className="text-right p-3 text-xs font-medium text-muted-foreground">סטטוס</th>
+                    <th className="text-right p-3 text-xs font-medium text-muted-foreground">תאריך</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -641,10 +687,38 @@ function BillingSection() {
 }
 
 function SupportSection() {
+  const token = useAuthStore((s) => s.token);
   const [filter, setFilter] = useState("all");
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [ticketStats, setTicketStats] = useState({ total: 0, openCount: 0, inProgressCount: 0 });
+  const [loading, setLoading] = useState(true);
 
-  const filtered = mockTickets.filter(t => filter === "all" || t.status === filter);
+  useEffect(() => {
+    const fetchTickets = async () => {
+      try {
+        const res = await fetch(`${apiUrl}/api/admin/tickets?limit=100`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) {
+          const data = await res.json();
+          setTickets(data.tickets.map((t: any) => ({
+            id: `T-${t.id}`,
+            subject: t.subject,
+            customer: t.customer,
+            priority: t.priority as "critical" | "high" | "medium" | "low",
+            status: t.status === "closed" ? "resolved" as const : t.status as "open" | "in-progress" | "waiting",
+            category: t.category,
+            createdAt: t.createdAt,
+            assignee: t.assignee,
+          })));
+          setTicketStats({ total: data.total, openCount: data.openCount, inProgressCount: data.inProgressCount });
+        }
+      } catch {}
+      setLoading(false);
+    };
+    fetchTickets();
+  }, [token]);
+
+  const filtered = tickets.filter(t => filter === "all" || t.status === filter);
 
   return (
     <div className="space-y-4">
@@ -652,10 +726,10 @@ function SupportSection() {
         <h2 className="text-2xl font-bold">תמיכה ופניות</h2>
         <div className="flex gap-2">
           {[
-            { id: "all", label: "הכל", count: mockTickets.length },
-            { id: "open", label: "פתוח", count: mockTickets.filter(t => t.status === "open").length },
-            { id: "in-progress", label: "בטיפול", count: mockTickets.filter(t => t.status === "in-progress").length },
-            { id: "waiting", label: "ממתין", count: mockTickets.filter(t => t.status === "waiting").length },
+            { id: "all", label: "הכל", count: tickets.length },
+            { id: "open", label: "פתוח", count: tickets.filter(t => t.status === "open").length },
+            { id: "in-progress", label: "בטיפול", count: tickets.filter(t => t.status === "in-progress").length },
+            { id: "waiting", label: "ממתין", count: tickets.filter(t => t.status === "waiting").length },
           ].map((f) => (
             <button key={f.id} onClick={() => setFilter(f.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${filter === f.id ? "bg-primary text-primary-foreground" : "bg-muted/30 text-muted-foreground hover:bg-muted/50"}`}>
@@ -667,7 +741,7 @@ function SupportSection() {
 
       <div className="grid grid-cols-4 gap-4 mb-4">
         {[
-          { label: "פתוחות", value: mockTickets.filter(t => t.status === "open").length, color: "text-blue-400" },
+          { label: "פתוחות", value: ticketStats.openCount, color: "text-blue-400" },
           { label: "זמן תגובה ממוצע", value: "2.4 שעות", color: "text-green-400" },
           { label: "שביעות רצון", value: "94%", color: "text-purple-400" },
           { label: "נפתרו השבוע", value: "47", color: "text-amber-400" },

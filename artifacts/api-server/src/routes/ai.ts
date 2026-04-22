@@ -312,6 +312,22 @@ async function runEndpoint(
   }
 }
 
+router.get("/ai/chat", requireAuth, async (req, res): Promise<void> => {
+  const { userId } = req as AuthenticatedRequest;
+  const conversations = await db.select({
+    id: aiConversationsTable.id,
+    title: aiConversationsTable.title,
+    model: aiConversationsTable.model,
+    createdAt: aiConversationsTable.createdAt,
+    updatedAt: aiConversationsTable.updatedAt,
+  })
+    .from(aiConversationsTable)
+    .where(eq(aiConversationsTable.userId, userId))
+    .orderBy(desc(aiConversationsTable.updatedAt))
+    .limit(20);
+  res.json({ conversations, availableModels: ["gpt-4o", "claude-3.5-sonnet", "gemini-pro", "deepseek-v3"] });
+});
+
 router.post("/ai/chat", requireAuth, async (req, res): Promise<void> => {
   const wantsStream =
     req.query.stream === "1" ||

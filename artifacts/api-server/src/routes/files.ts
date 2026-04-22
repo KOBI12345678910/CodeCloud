@@ -20,6 +20,28 @@ import { requireAuth, requireProjectAccess } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
 
+router.get("/files", requireAuth, async (req, res): Promise<void> => {
+  const { userId } = req as any;
+  const userFiles = await db.select({
+    id: filesTable.id,
+    projectId: filesTable.projectId,
+    path: filesTable.path,
+    name: filesTable.name,
+    isDirectory: filesTable.isDirectory,
+    sizeBytes: filesTable.sizeBytes,
+    mimeType: filesTable.mimeType,
+    createdAt: filesTable.createdAt,
+    updatedAt: filesTable.updatedAt,
+  })
+    .from(filesTable)
+    .innerJoin(
+      sql`projects`,
+      sql`projects.id = ${filesTable.projectId} AND projects.owner_id = ${userId}`
+    )
+    .limit(100);
+  res.json({ files: userFiles, total: userFiles.length });
+});
+
 router.get("/projects/:id/files", requireAuth, requireProjectAccess("viewer"), async (req, res): Promise<void> => {
   const params = ListFilesParams.safeParse(req.params);
   if (!params.success) {

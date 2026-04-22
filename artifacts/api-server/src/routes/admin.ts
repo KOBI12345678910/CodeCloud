@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, projectsTable, deploymentsTable, auditLogTable } from "@workspace/db";
+import { db, usersTable, projectsTable, deploymentsTable, auditLogTable, issuesTable } from "@workspace/db";
 import { eq, desc, count, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import type { AuthenticatedRequest } from "../types";
@@ -129,6 +129,47 @@ router.patch("/admin/users/:id/plan", requireAuth, requireAdmin, async (req, res
   }
 
   res.json(updated);
+});
+
+router.get("/admin/tickets", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+  const limit = Number(req.query.limit) || 50;
+  const offset = Number(req.query.offset) || 0;
+
+  const tickets = await db.select({
+    id: issuesTable.id,
+    title: issuesTable.title,
+    description: issuesTable.description,
+    status: issuesTable.status,
+    label: issuesTable.label,
+    createdAt: issuesTable.createdAt,
+    updatedAt: issuesTable.updatedAt,
+    creatorEmail: usersTable.email,
+    creatorName: usersTable.displayName,
+  }).from(issuesTable)
+    .leftJoin(usersTable, eq(issuesTable.createdBy, usersTable.id))
+    .orderBy(desc(issuesTable.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  const [total] = await db.select({ count: count() }).from(issuesTable);
+  const [openCount] = await db.select({ count: count() }).from(issuesTable).where(eq(issuesTable.status, "open"));
+  const [inProgressCount] = await db.select({ count: count() }).from(issuesTable).where(eq(issuesTable.status, "in-progress"));
+
+  res.json({
+    tickets: tickets.map(t => ({
+      id: t.id.substring(0, 8).toUpperCase(),
+      subject: t.title,
+      customer: t.creatorName || t.creatorEmail || "—",
+      priority: t.label === "bug" ? "high" : t.label === "feature" ? "medium" : "low",
+      status: t.status,
+      category: t.label,
+      createdAt: t.createdAt,
+      assignee: "—",
+    })),
+    total: total?.count ?? 0,
+    openCount: openCount?.count ?? 0,
+    inProgressCount: inProgressCount?.count ?? 0,
+  });
 });
 
 export default router;

@@ -46,24 +46,29 @@ function createLimiter(windowMs: number, baseMax: number, name: string, tiered =
         retryAfter: Math.ceil(windowMs / 1000),
       });
     },
-    validate: { xForwardedForHeader: false },
+    validate: false,
     keyGenerator: (req: Request) => {
       const authReq = req as AuthenticatedRequest;
-      return authReq.userId || req.ip || "unknown";
+      if (authReq.userId) return authReq.userId;
+      const ip = req.ip || req.socket?.remoteAddress || "unknown";
+      return ip.replace(/^::ffff:/, "");
     },
   });
 }
 
-export const generalLimiter = createLimiter(60 * 1000, 200, "general", true);
+const isDev = process.env.NODE_ENV === "development";
+const devMultiplier = isDev ? 50 : 1;
 
-export const authLimiter = createLimiter(60 * 1000, 10, "auth");
+export const generalLimiter = createLimiter(60 * 1000, 200 * devMultiplier, "general", true);
 
-export const aiLimiter = createLimiter(60 * 1000, 20, "ai", true);
+export const authLimiter = createLimiter(60 * 1000, 10 * devMultiplier, "auth");
 
-export const uploadLimiter = createLimiter(60 * 1000, 5, "upload", true);
+export const aiLimiter = createLimiter(60 * 1000, 20 * devMultiplier, "ai", true);
 
-export const deployLimiter = createLimiter(60 * 1000, 3, "deploy", true);
+export const uploadLimiter = createLimiter(60 * 1000, 5 * devMultiplier, "upload", true);
 
-export const billingLimiter = createLimiter(60 * 1000, 5, "billing");
+export const deployLimiter = createLimiter(60 * 1000, 3 * devMultiplier, "deploy", true);
 
-export const apiKeyLimiter = createLimiter(60 * 1000, 30, "api-key", true);
+export const billingLimiter = createLimiter(60 * 1000, 5 * devMultiplier, "billing");
+
+export const apiKeyLimiter = createLimiter(60 * 1000, 30 * devMultiplier, "api-key", true);

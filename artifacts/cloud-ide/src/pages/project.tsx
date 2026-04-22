@@ -6,7 +6,7 @@ import { registerMonacoExtensions, getEditorOptions, setupMultiCursorKeybindings
 import ImagePreview, { isImageFile } from "@/components/ide/ImagePreview";
 import ResourceMonitor from "@/components/ide/ResourceMonitor";
 import TerminalPanel from "@/components/ide/TerminalPanel";
-import AiPanel from "@/components/ide/AiPanel";
+import AiPanel from "@/components/ide/AgentPanel";
 import Breadcrumbs from "@/components/ide/Breadcrumbs";
 import SplitEditor from "@/components/ide/SplitEditor";
 import DropZone from "@/components/ide/DropZone";

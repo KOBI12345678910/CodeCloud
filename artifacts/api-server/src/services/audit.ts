@@ -58,7 +58,15 @@ export type AuditAction =
   | "project.transfer.initiated"
   | "project.transfer.accepted"
   | "project.transfer.declined"
-  | "project.transfer.cancelled";
+  | "project.transfer.cancelled"
+  | "privacy.export_requested"
+  | "privacy.deletion_requested"
+  | "privacy.deletion_cancelled"
+  | "privacy.consent_updated"
+  | "privacy.rectification"
+  | "compliance.dpa_generated"
+  | "compliance.retention_policy_updated"
+  | "compliance.data_region_changed";
 
 export type AuditResourceType =
   | "user"
@@ -77,7 +85,11 @@ export type AuditResourceType =
   | "webhook"
   | "organization"
   | "org_member"
-  | "org_secret";
+  | "org_secret"
+  | "dsar_request"
+  | "consent"
+  | "retention_policy"
+  | "dpa";
 
 export interface AuditEntry {
   userId?: string | null;

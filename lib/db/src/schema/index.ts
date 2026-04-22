@@ -61,3 +61,6 @@ export * from "./user-sessions";
 export * from "./org-policies";
 export * from "./login-history";
 export * from "./ip-allowlist";
+export * from "./dsar-requests";
+export * from "./user-consents";
+export * from "./data-retention-policies";

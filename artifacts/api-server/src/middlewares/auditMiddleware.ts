@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { logAudit, getClientIp, getUserAgent } from "../services/audit";
+import { logAudit, getClientIp, getUserAgent, type AuditAction, type AuditResourceType } from "../services/audit";
 import type { AuthenticatedRequest } from "../types";
 
 const MUTATION_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -67,18 +67,19 @@ export function auditMiddleware(req: Request, res: Response, next: NextFunction)
       const action = extractAction(req.method, path);
       logAudit({
         userId,
-        action,
-        resourceType: path.split("/")[2] || "unknown",
+        action: action as AuditAction,
+        resourceType: (path.split("/")[2] || "unknown") as AuditResourceType,
         resourceId: req.params?.id || undefined,
         metadata: {
           method: req.method,
           path,
           statusCode: res.statusCode,
           durationMs: Date.now() - startTime,
+          body: redactBody(req.body),
         },
         ipAddress: getClientIp(req),
         userAgent: getUserAgent(req),
-        correlationId: req.headers["x-request-id"] as string,
+        correlationId: (req.headers["x-request-id"] as string) || undefined,
       });
     }
 

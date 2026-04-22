@@ -324,6 +324,11 @@ import publishingControlsRouter from "./publishing-controls";
 import knowledgeBaseRouter from "./knowledge-base";
 import securityCenterRouter from "./security-center";
 import orgPoliciesRouter from "./org-policies";
+import privacyRouter from "./privacy";
+import dataResidencyRouter from "./data-residency";
+import dataRetentionRouter from "./data-retention";
+import dpaRouter from "./dpa";
+import complianceDashboardRouter from "./compliance-dashboard";
 import { authLimiter, aiLimiter, uploadLimiter, deployLimiter, billingLimiter } from "../middlewares/rateLimit";
 import { requireApiKeyScope } from "../middlewares/apiKeyScope";
 
@@ -656,5 +661,10 @@ router.use(publishingControlsRouter);
 router.use(knowledgeBaseRouter);
 router.use(securityCenterRouter);
 router.use(orgPoliciesRouter);
+router.use(privacyRouter);
+router.use(dataResidencyRouter);
+router.use(dataRetentionRouter);
+router.use(dpaRouter);
+router.use(complianceDashboardRouter);
 
 export default router;

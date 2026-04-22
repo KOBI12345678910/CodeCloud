@@ -57,6 +57,9 @@ import LiveSharePage from "@/pages/live-share";
 import TemplateStorePage from "@/pages/template-store";
 import ErrorTrackingPage from "@/pages/error-tracking";
 import { AboutPage, TermsPage, PrivacyPage } from "@/pages/marketing-stub";
+import PrivacySettingsPage from "@/pages/privacy-settings";
+import AdminCompliancePage from "@/pages/admin-compliance";
+import CookieConsent from "@/components/CookieConsent";
 import BuildHubPage from "@/pages/buildhub";
 import BuildHubWorkspace from "@/pages/buildhub-workspace";
 import BountiesPage from "@/pages/bounties";
@@ -425,12 +428,19 @@ function ClerkProviderWithRoutes() {
             <Route path="/build/:id">
               {(params) => <BuildHubWorkspace id={params.id} />}
             </Route>
+            <Route path="/settings/privacy">
+              <ProtectedRoute component={PrivacySettingsPage} />
+            </Route>
+            <Route path="/admin/compliance">
+              <AdminRoute component={AdminCompliancePage} />
+            </Route>
             <Route path="/about" component={AboutPage} />
             <Route path="/terms" component={TermsPage} />
             <Route path="/privacy" component={PrivacyPage} />
             <Route component={NotFound} />
           </Switch>
           <ProjectSwitcher />
+          <CookieConsent />
           <Toaster />
         </TooltipProvider>
       </QueryClientProvider>

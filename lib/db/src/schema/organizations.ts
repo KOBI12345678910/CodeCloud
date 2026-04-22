@@ -3,6 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const orgPlanEnum = pgEnum("org_plan", ["free", "team", "enterprise"]);
+export const dataRegionEnum = pgEnum("data_region", ["us", "eu", "apac"]);
 
 export const organizationsTable = pgTable("organizations", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -10,6 +11,7 @@ export const organizationsTable = pgTable("organizations", {
   slug: varchar("slug", { length: 100 }).unique().notNull(),
   avatarUrl: text("avatar_url"),
   plan: orgPlanEnum("org_plan").default("free").notNull(),
+  dataRegion: dataRegionEnum("data_region").default("us").notNull(),
   ssoEnabled: boolean("sso_enabled").default(false).notNull(),
   settings: jsonb("settings").default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

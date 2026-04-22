@@ -59,13 +59,11 @@ router.post("/security/2fa/verify", requireJwtAuth, async (req, res): Promise<vo
     return;
   }
 
-  const valid = await validateTwoFactorCode(userId, token);
-  if (!valid) {
+  const enabled = await verifyAndEnableTwoFactor(userId, token);
+  if (!enabled) {
     res.status(400).json({ error: "Invalid verification code. Please try again." });
     return;
   }
-
-  await verifyAndEnableTwoFactor(userId, token);
 
   logAudit({
     userId,

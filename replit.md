@@ -22,7 +22,8 @@ The frontend uses React 19, Vite, and Tailwind CSS v4, providing a responsive an
 - **Validation:** Zod is used extensively for API request body validation.
 - **API Codegen:** Orval generates React Query hooks and Zod schemas from an OpenAPI specification, ensuring type safety and consistency between frontend and backend.
 - **WebSocket:** A dedicated WebSocket server (`/ws`) supports real-time features like terminal interaction, collaboration, notifications, and deployment logs, utilizing Socket.IO and Yjs CRDT. Features connection pooling, heartbeat mechanisms, and channel-based pub/sub.
-- **Security:** Helmet, CORS, and `express-rate-limit` middlewares. Plan-tiered rate limits (free/pro=2x/team=5x). AES-256-GCM encryption for secrets. Boot-time secret validation (fail-fast in production). Active session tracking with device detection, login history, auto-audit middleware (body-less), brute-force lockout, API key scoping (read/write/admin), IP allowlisting, and org-level RBAC policies. Security Center UI at `/security` with 4 tabs.
+- **Security:** Helmet, CORS, and `express-rate-limit` middlewares. Plan-tiered rate limits (free/pro=2x/team=5x). AES-256-GCM encryption for secrets. Boot-time secret validation (fail-fast in production). Active session tracking with device detection, login history, auto-audit middleware (with redacted body logging), brute-force lockout, API key scoping (read/write/admin), IP allowlisting, and org-level RBAC policies. Security Center UI at `/security` with 4 tabs.
+- **Compliance & Privacy:** GDPR DSAR (data export/deletion with 30-day grace), granular cookie consent management with DNT detection, data residency (US/EU/APAC per org), data retention policies (auto-archive/delete), DPA generation for enterprise, compliance admin dashboard with DSAR queue/consent rates/region distribution.
 - **AI Gateway:** 38 AI models from 25 providers (OpenAI, Anthropic, Google, xAI, DeepSeek, Meta, Mistral, Qwen, Cohere, Ollama, Perplexity, AI21, Together, Fireworks, Cerebras, Inflection, Zhipu, MiniMax, Moonshot, Yi, SambaNova, NVIDIA, Amazon, Azure, Baichuan). Smart AI Router auto-selects optimal model by task/cost/speed. AI Benchmark system. BYOK support. AI chat conversations within projects.
 - **Credits & Billing:** Stripe integration, credit rollover (pro: 100, team: 300), on-demand top-ups, metered billing, usage tracking. **Admin Pricing Engine** (`/admin/pricing`): full control over all service prices, margins (per-service + global), currency markup, revenue simulator with ARR forecasting. **Service Marketplace** (`/service-marketplace`): granular per-service billing for domains, cloud, email, security, database, support — users subscribe individually. **Catalog API** (`/catalog/services`): public service catalog (non-admin). Server-side price enforcement (no client-supplied pricing). 11 payment methods supported (card, PayPal, crypto, Apple/Google Pay, wire, invoice).
 - **Universal AI Model Connector** (`/model-connector`): Connect any AI model from any provider worldwide (25+ providers: OpenAI, Anthropic, Google, xAI, DeepSeek, Meta, Mistral, Cohere, Perplexity, Together, Fireworks, Cerebras, Groq, SambaNova, NVIDIA NIM, Azure OpenAI, AWS Bedrock, AI21, Inflection, Zhipu GLM, MiniMax, Moonshot Kimi, Baichuan, Ollama self-hosted, custom OpenAI-compatible). Admin sets per-model pricing margins, rate limits, daily caps. Health check & latency monitoring per connector.
@@ -73,6 +74,11 @@ The frontend uses React 19, Vite, and Tailwind CSS v4, providing a responsive an
 - `/api/scim/v2/*` — SCIM v2 user provisioning
 - `/api/design-templates` — Template marketplace
 - `/api/security/*` — 2FA, sessions, login history
+- `/api/privacy/*` — DSAR export/deletion, consent management
+- `/api/data-residency/*` — Organization data region management
+- `/api/data-retention/*` — Data retention policies
+- `/api/privacy/dpa/generate` — DPA document generation
+- `/api/admin/compliance/*` — Compliance dashboard & metrics
 - `/projects/:id/issues` — Issue tracking API
 
 ## Frontend Pages (Recent Additions)
@@ -115,10 +121,13 @@ The frontend uses React 19, Vite, and Tailwind CSS v4, providing a responsive an
 - `/developer-settings` — Developer API and app settings
 - `/template-store` — Project template marketplace
 - `/error-tracking` — Per-project error tracking
+- `/settings/privacy` — Privacy settings (DSAR, consent, data export/deletion)
+- `/admin/compliance` — Compliance admin dashboard
 
 ## DB Schemas Added (Recent)
 - `db_sync_logs`, `todos`, `exec_history`, `wiki_pages`, `wiki_page_versions`, `coding_stats`, `coding_streaks`, `incidents`, `incident_updates`, `milestones`, `milestone_tasks`, `issues` (with JSONB code references).
 - `two-factor-secrets`, `sso-configurations`, `user-sessions`, `org-policies`, `login-history`, `ip-allowlist`.
+- `dsar-requests`, `user-consents`, `data-retention-policies` (GDPR compliance).
 
 
 ## External Dependencies

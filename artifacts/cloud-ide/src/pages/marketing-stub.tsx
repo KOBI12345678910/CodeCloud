@@ -255,9 +255,33 @@ export const PrivacyPage = () => (
     <Section title="Your rights">
       <p>
         You can access, export, correct, or delete your personal data at any time from
-        Settings → Privacy, or by emailing <a className="text-blue-400 hover:underline" href="mailto:privacy@codecloud.app">privacy@codecloud.app</a>.
+        <a className="text-blue-400 hover:underline mx-1" href="/settings/privacy">Settings → Privacy</a>,
+        or by emailing <a className="text-blue-400 hover:underline" href="mailto:privacy@codecloud.app">privacy@codecloud.app</a>.
         EU and California residents have additional rights under GDPR and CCPA, including
         the right to object to processing and to lodge a complaint with a supervisory authority.
+      </p>
+      <ul className="list-disc pl-6 space-y-1.5">
+        <li><strong>Right to access & portability</strong> — request a full data export from Settings → Privacy.</li>
+        <li><strong>Right to erasure</strong> — request permanent account deletion with a 30-day grace period.</li>
+        <li><strong>Right to rectification</strong> — edit or correct your personal data from Settings → Privacy.</li>
+        <li><strong>Consent management</strong> — adjust cookie and tracking preferences via the consent banner or Settings → Privacy.</li>
+        <li><strong>Data Processing Agreement</strong> — enterprise customers can generate a DPA from Organization Settings.</li>
+      </ul>
+    </Section>
+
+    <Section title="Data residency">
+      <p>
+        Organization administrators can select a preferred data region (US, EU, or APAC)
+        from their organization settings. New projects default to the organization&apos;s
+        selected region. Data residency preferences are displayed in project settings.
+      </p>
+    </Section>
+
+    <Section title="Data retention">
+      <p>
+        Organizations can configure custom data retention policies, including automatic
+        archival and deletion of inactive projects. Project owners are notified before
+        any automated retention actions take effect.
       </p>
     </Section>
 

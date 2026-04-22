@@ -5,6 +5,7 @@ import { clearEmailQueue, getEmailQueue } from "../services/email";
 import { cleanupZombies, autoRestartUnhealthy, getAlerts } from "../services/container-monitor";
 import { getCertificatesNeedingRenewal, renewCertificate, markExpiringCertificates } from "../services/ssl";
 import { createSnapshot, cleanupExpiredSnapshots } from "../services/snapshots";
+import { processExpiredDeletions } from "../services/gdpr-compliance";
 
 interface Job {
   name: string;
@@ -312,6 +313,13 @@ async function containerHealthCheck(): Promise<void> {
   console.log(`[job:containerHealthCheck] Checked ${runningProjects.length} containers`);
 }
 
+async function dsarDeletionPurge(): Promise<void> {
+  const purged = await processExpiredDeletions();
+  if (purged > 0) {
+    console.log(`[job:dsarDeletionPurge] Purged ${purged} expired account deletion requests`);
+  }
+}
+
 export function startBackgroundJobs(): void {
   jobs.push(
     { name: "containerCleanup", interval: 5 * 60 * 1000, handler: containerCleanup },
@@ -324,7 +332,8 @@ export function startBackgroundJobs(): void {
     { name: "certRenewal", interval: 60 * 60 * 1000, handler: certRenewal },
     { name: "autoSnapshot", interval: 60 * 60 * 1000, handler: autoSnapshot },
     { name: "snapshotCleanup", interval: 6 * 60 * 60 * 1000, handler: snapshotCleanup },
-    { name: "containerHealthCheck", interval: 60 * 1000, handler: containerHealthCheck }
+    { name: "containerHealthCheck", interval: 60 * 1000, handler: containerHealthCheck },
+    { name: "dsarDeletionPurge", interval: 6 * 60 * 60 * 1000, handler: dsarDeletionPurge }
   );
 
   for (const job of jobs) {

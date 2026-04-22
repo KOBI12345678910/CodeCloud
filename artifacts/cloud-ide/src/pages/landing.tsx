@@ -45,6 +45,22 @@ function Reveal({ children, delay = 0, className = "" }: { children: React.React
   );
 }
 
+const CODE_LINES: { text: string; color: string }[] = [
+  { text: "import express from 'express';", color: "text-purple-400" },
+  { text: "import { db } from './lib/db';", color: "text-purple-400" },
+  { text: "", color: "" },
+  { text: "const app = express();", color: "text-blue-300" },
+  { text: "", color: "" },
+  { text: "app.get('/api/users', async (req, res) => {", color: "text-cyan-300" },
+  { text: "  const users = await db.user.findMany();", color: "text-slate-200" },
+  { text: "  res.json({ users });", color: "text-slate-200" },
+  { text: "});", color: "text-cyan-300" },
+  { text: "", color: "" },
+  { text: "app.listen(3000, () => {", color: "text-cyan-300" },
+  { text: "  console.log('🚀 Server ready');", color: "text-green-300" },
+  { text: "});", color: "text-cyan-300" },
+];
+
 function AnimatedCodeEditor() {
   const [visibleLines, setVisibleLines] = useState(0);
 
@@ -88,6 +104,24 @@ function AnimatedCodeEditor() {
   );
 }
 
+function useAnimatedCounter(target: number, duration: number, active: boolean) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setCount(Math.round(target * eased));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration, active]);
+  return count;
+}
+
 function StatsCounter({ value, suffix, label, active }: { value: number; suffix: string; label: string; active: boolean }) {
   const count = useAnimatedCounter(value, 2000, active);
   const display = value >= 1000 ? `${(count / 1000).toFixed(count >= value ? 1 : 0).replace(/\.0$/, "")}K` : count.toString();
@@ -100,6 +134,17 @@ function StatsCounter({ value, suffix, label, active }: { value: number; suffix:
     </div>
   );
 }
+
+const logos = ["Acme", "Globex", "Initech", "Umbrella", "Stark", "Wayne", "Hooli", "Pied Piper"];
+
+const testimonials = [
+  { name: "Sarah Chen", role: "Senior Engineer @ Stripe", avatar: "SC", text: "The fastest dev environment I've ever used. Zero setup, instant collaboration — it just works." },
+  { name: "Marcus Johnson", role: "Founder @ DevTools.io", avatar: "MJ", text: "We replaced our entire local toolchain with this. Ship velocity went up 3x in the first month." },
+  { name: "Priya Patel", role: "Tech Lead @ Notion", avatar: "PP", text: "Onboarding a new engineer used to take days. Now it's literally one click and they're coding." },
+  { name: "David Kim", role: "CTO @ Vercel", avatar: "DK", text: "The integrated terminal and live preview are game-changers. Our team won't go back." },
+  { name: "Emma Rodriguez", role: "Staff Engineer @ Linear", avatar: "ER", text: "Beautiful editor, real Linux shell, instant deploy — this is how cloud dev should feel." },
+  { name: "Alex Thompson", role: "Indie Hacker", avatar: "AT", text: "Built and shipped my entire SaaS from an iPad on a flight. Felt like the future." },
+];
 
 const features = [
   { icon: Code2, title: "Monaco Editor", desc: "VS Code-quality editing with IntelliSense, syntax highlighting, and multi-cursor support." },

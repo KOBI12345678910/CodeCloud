@@ -4,13 +4,28 @@
   "license": "MIT",
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
-    "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "build": "turbo run build --continue",
+    "lint": "turbo run lint --continue",
+    "test": "turbo run test --continue",
+    "typecheck": "turbo run typecheck --continue",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "dev": "pnpm dev:stack && turbo run dev --parallel --filter=@workspace/cloud-ide --filter=@workspace/api-trpc --filter=@workspace/worker",
+    "dev:graph": "turbo run dev --filter=@workspace/cloud-ide --filter=@workspace/api-trpc --filter=@workspace/worker --dry=json",
+    "dev:graph:check": "node scripts/check-dev-graph.mjs",
+    "dev:apps": "turbo run dev --parallel",
+    "dev:stack": "docker compose up -d postgres redis meilisearch minio otel-collector"
   },
   "private": true,
   "devDependencies": {
-    "typescript": "~5.9.2",
-    "prettier": "^3.8.1"
-  }
+    "@opentelemetry/exporter-trace-otlp-http": "^0.215.0",
+    "@opentelemetry/sdk-node": "^0.215.0",
+    "@sentry/browser": "^10.49.0",
+    "@sentry/node": "^10.49.0",
+    "bullmq": "^5.75.2",
+    "posthog-js": "^1.369.5",
+    "prettier": "^3.8.1",
+    "turbo": "^2.3.3",
+    "typescript": "~5.9.2"
+  },
+  "packageManager": "pnpm@10.26.1"
 }

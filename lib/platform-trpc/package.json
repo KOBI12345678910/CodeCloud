@@ -1,0 +1,23 @@
+{
+  "name": "@platform/trpc",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@trpc/server": "^11.0.0-rc.660",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@platform/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "vitest": "^2.1.8",
+    "typescript": "~5.9.2"
+  }
+}

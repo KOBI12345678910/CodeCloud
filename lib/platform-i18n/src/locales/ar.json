@@ -1,0 +1,7 @@
+{
+  "app.title": "المنصة",
+  "nav.home": "الرئيسية",
+  "nav.health": "الصحة",
+  "common.greeting": "مرحبا، {name}!",
+  "common.itemCount": "{count, plural, =0 {لا توجد عناصر} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصرًا} other {# عنصر}}"
+}

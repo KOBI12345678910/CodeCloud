@@ -1,0 +1,7 @@
+{
+  "app.title": "Platform",
+  "nav.home": "Home",
+  "nav.health": "Health",
+  "common.greeting": "Hello, {name}!",
+  "common.itemCount": "{count, plural, =0 {No items} one {# item} other {# items}}"
+}

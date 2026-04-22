@@ -1,0 +1,7 @@
+{
+  "app.title": "プラットフォーム",
+  "nav.home": "ホーム",
+  "nav.health": "ヘルス",
+  "common.greeting": "こんにちは、{name}さん！",
+  "common.itemCount": "{count, plural, =0 {アイテムなし} other {#件のアイテム}}"
+}

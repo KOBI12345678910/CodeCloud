@@ -1,0 +1,119 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: platform
+      POSTGRES_PASSWORD: platform
+      POSTGRES_DB: platform
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U platform"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.10
+    environment:
+      MEILI_MASTER_KEY: dev-master-key
+      MEILI_NO_ANALYTICS: "true"
+    ports: ["7700:7700"]
+    volumes: [meili:/meili_data]
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: platform
+      MINIO_ROOT_PASSWORD: platform-dev
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [minio:/data]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.108.0
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./infra/otel/collector-config.yaml:/etc/otel/config.yaml:ro
+    ports: ["4317:4317", "4318:4318", "8889:8889"]
+
+  # Canonical reference API service: Fastify + tRPC + OpenAPI + cookie
+  # auth + DSAR. Boots in the same shape as `pnpm dev` so `docker
+  # compose up` and `pnpm dev` exercise the same runtime.
+  api:
+    build:
+      context: .
+      dockerfile: artifacts/api-trpc/Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: "8080"
+      DATABASE_URL: postgres://platform:platform@postgres:5432/platform
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: dev-session-secret-must-be-32-chars-or-more-aaaaaa
+      CSRF_SECRET: dev-csrf-secret-must-be-32-chars-or-more-bbbbbbbbbb
+      DSAR_ENABLED: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    ports: ["8080:8080"]
+
+  # Legacy Express service kept for backwards compat with the in-flight
+  # cloud-ide migration (follow-up #24). Disabled by default; opt in
+  # with `docker compose --profile legacy up`.
+  api-legacy:
+    profiles: ["legacy"]
+    build:
+      context: .
+      dockerfile: artifacts/api-server/Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: "8081"
+      DATABASE_URL: postgres://platform:platform@postgres:5432/platform
+      REDIS_URL: redis://redis:6379
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    ports: ["8081:8081"]
+
+  worker:
+    build:
+      context: .
+      dockerfile: artifacts/worker/Dockerfile
+    environment:
+      NODE_ENV: development
+      METRICS_PORT: "9100"
+      DATABASE_URL: postgres://platform:platform@postgres:5432/platform
+      REDIS_URL: redis://redis:6379
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    ports: ["9100:9100"]
+
+  web:
+    build:
+      context: .
+      dockerfile: artifacts/cloud-ide/Dockerfile
+    environment:
+      NODE_ENV: development
+      VITE_API_URL: http://localhost:8080
+    depends_on: [api]
+    ports: ["5173:5173"]
+
+volumes:
+  pgdata: {}
+  meili: {}
+  minio: {}

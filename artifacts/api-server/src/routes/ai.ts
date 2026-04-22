@@ -299,19 +299,112 @@ async function runEndpoint(
 }
 
 router.post("/ai/chat", requireAuth, async (req, res): Promise<void> => {
-  await runEndpoint(
-    req as AuthenticatedRequest,
-    res,
-    "chat",
-    SYSTEM_PROMPTS.chat,
-    (body, ctx) => {
-      const message = String(body.message ?? "");
-      const errors = body.errors ? `\n\n## Recent terminal errors\n\`\`\`\n${String(body.errors).slice(0, 4000)}\n\`\`\`` : "";
-      return ctx ? `${ctx}${errors}\n\n## User message\n${message}` : message;
-    },
-    (body) => String(body.message ?? ""),
-    { useHistory: true, titlePrefix: "Chat" },
-  );
+  const wantsStream =
+    req.query.stream === "1" ||
+    String(req.headers.accept ?? "").includes("text/event-stream");
+
+  if (!wantsStream) {
+    await runEndpoint(
+      req as AuthenticatedRequest,
+      res,
+      "chat",
+      SYSTEM_PROMPTS.chat,
+      (body, ctx) => {
+        const message = String(body.message ?? "");
+        const errors = body.errors ? `\n\n## Recent terminal errors\n\`\`\`\n${String(body.errors).slice(0, 4000)}\n\`\`\`` : "";
+        return ctx ? `${ctx}${errors}\n\n## User message\n${message}` : message;
+      },
+      (body) => String(body.message ?? ""),
+      { useHistory: true, titlePrefix: "Chat" },
+    );
+    return;
+  }
+
+  const { userId, user } = req as AuthenticatedRequest;
+  const limit = await checkRateLimit(userId, user.plan);
+  if (!limit.ok) {
+    res.status(429).json({ error: "Daily AI request limit reached", used: limit.used, limit: limit.limit, plan: user.plan });
+    return;
+  }
+
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const message = String(body.message ?? "");
+  if (!message.trim()) {
+    res.status(400).json({ error: "message is required" });
+    return;
+  }
+  const projectId = (body.projectId as string | undefined) ?? null;
+  const conversationId = (body.conversationId as string | undefined) ?? null;
+  const activeFilePath = body.activeFilePath as string | undefined;
+
+  if (projectId && !(await checkProjectAccess(projectId, userId))) {
+    res.status(403).json({ error: "Access denied" });
+    return;
+  }
+
+  const ctx = projectId ? await gatherProjectContext(projectId, activeFilePath) : "";
+  const errorsBlock = body.errors ? `\n\n## Recent terminal errors\n\`\`\`\n${String(body.errors).slice(0, 4000)}\n\`\`\`` : "";
+  const userPrompt = ctx ? `${ctx}${errorsBlock}\n\n## User message\n${message}` : message;
+
+  let history: ChatMessage[] = [];
+  if (conversationId) {
+    const [conv] = await db
+      .select()
+      .from(aiConversationsTable)
+      .where(and(eq(aiConversationsTable.id, conversationId), eq(aiConversationsTable.userId, userId)));
+    if (conv) history = ((conv.messages as ChatMessage[]) || []).slice(-10);
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders?.();
+
+  const send = (event: string, data: unknown): void => {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  let assistantText = "";
+  let usage: TokenCount = { input: 0, output: 0 };
+  try {
+    const stream = anthropic.messages.stream({
+      model: DEFAULT_MODEL,
+      max_tokens: MAX_TOKENS,
+      system: SYSTEM_PROMPTS.chat,
+      messages: [...history, { role: "user", content: userPrompt }],
+    });
+
+    stream.on("text", (delta: string) => {
+      assistantText += delta;
+      send("delta", { text: delta });
+    });
+
+    const finalMsg = await stream.finalMessage();
+    usage = {
+      input: finalMsg.usage?.input_tokens ?? 0,
+      output: finalMsg.usage?.output_tokens ?? 0,
+    };
+
+    const convId = await persistTurn(
+      conversationId,
+      userId,
+      projectId,
+      message,
+      assistantText,
+      usage,
+      `Chat: ${message.slice(0, 60)}`,
+      "chat",
+    );
+
+    send("done", { conversationId: convId, usage });
+    res.end();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "AI request failed";
+    console.error("[ai] stream error:", msg);
+    send("error", { error: msg });
+    res.end();
+  }
 });
 
 router.post("/ai/generate", requireAuth, async (req, res): Promise<void> => {

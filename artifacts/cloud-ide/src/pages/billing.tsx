@@ -60,6 +60,27 @@ export default function BillingDashboard() {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  const [checkoutBanner, setCheckoutBanner] = useState<{ kind: "success" | "cancelled"; sessionId?: string } | null>(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const stripe = params.get("stripe");
+    if (stripe === "success") {
+      setCheckoutBanner({ kind: "success", sessionId: params.get("session_id") || undefined });
+      const t = setTimeout(() => { void refresh(); }, 1500);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("stripe");
+      url.searchParams.delete("session_id");
+      window.history.replaceState({}, "", url.toString());
+      return () => clearTimeout(t);
+    }
+    if (stripe === "cancelled") {
+      setCheckoutBanner({ kind: "cancelled" });
+      const url = new URL(window.location.href);
+      url.searchParams.delete("stripe");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [refresh]);
+
   const topup = useCallback(async () => {
     setBusy("topup");
     try {
@@ -98,6 +119,26 @@ export default function BillingDashboard() {
       </header>
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
+        {checkoutBanner?.kind === "success" && (
+          <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4 flex items-center gap-3">
+            <Sparkles className="w-5 h-5 text-emerald-500" />
+            <div className="flex-1 text-sm">
+              <div className="font-medium text-emerald-600 dark:text-emerald-400">Payment received</div>
+              <div className="text-muted-foreground">Your credits will appear in your balance momentarily.</div>
+            </div>
+            <button onClick={() => setCheckoutBanner(null)} className="text-xs text-muted-foreground hover:text-foreground">Dismiss</button>
+          </div>
+        )}
+        {checkoutBanner?.kind === "cancelled" && (
+          <div className="rounded-2xl border border-border bg-muted/40 p-4 flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-muted-foreground" />
+            <div className="flex-1 text-sm">
+              <div className="font-medium">Checkout cancelled</div>
+              <div className="text-muted-foreground">No charge was made. You can try again whenever you&apos;re ready.</div>
+            </div>
+            <button onClick={() => setCheckoutBanner(null)} className="text-xs text-muted-foreground hover:text-foreground">Dismiss</button>
+          </div>
+        )}
         {balance?.lowBalance && (
           <div className="rounded-2xl border border-yellow-500/40 bg-yellow-500/10 p-4 flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />

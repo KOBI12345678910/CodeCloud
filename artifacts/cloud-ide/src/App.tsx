@@ -276,7 +276,11 @@ function ClerkProviderWithRoutes() {
             <Route path="/security">
               <ProtectedRoute component={SecurityPage} />
             </Route>
-            <Route path="/profile/:username?" component={ProfilePage} />
+            <Route path="/profile/:username?">
+              <Show when="signed-in">
+                <ProfilePage />
+              </Show>
+            </Route>
             <Route path="/snippets" component={SnippetsPage} />
             <Route path="/developer">
               <ProtectedRoute component={DeveloperSettingsPage} />

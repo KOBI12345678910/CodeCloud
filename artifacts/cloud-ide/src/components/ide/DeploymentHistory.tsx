@@ -141,6 +141,7 @@ export default function DeploymentHistory({ projectId, onClose }: DeploymentHist
       const poll = setInterval(() => { void fetchDeployments(); }, 3000);
       return () => clearInterval(poll);
     }
+    return undefined;
   }, [deployments, projectId]);
 
   const fetchDeployments = async () => {

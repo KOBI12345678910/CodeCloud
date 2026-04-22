@@ -916,6 +916,9 @@ export default function ProjectPage({ id }: { id: string }) {
     revealLineInCenter: (line: number) => void;
     setPosition: (pos: { lineNumber: number; column: number }) => void;
     setSelection: (selection: any) => void;
+    setValue: (value: string) => void;
+    executeEdits: (source: string, edits: Array<{ range: any; text: string; forceMoveMarkers?: boolean }>) => void;
+    onDidChangeCursorSelection: (cb: (e: { selection: { startLineNumber: number; endLineNumber: number; startColumn: number; endColumn: number } }) => void) => void;
   }
   const editorRef = useRef<EditorInstance | null>(null);
   const monacoInstanceRef = useRef<typeof import("monaco-editor") | null>(null);
@@ -1190,7 +1193,7 @@ export default function ProjectPage({ id }: { id: string }) {
         socketIORef.current?.sendCursorUpdate(activeFile.path || activeFile.name, e.position.lineNumber, e.position.column);
       }
     });
-    editor.onDidChangeCursorSelection((e) => {
+    editor.onDidChangeCursorSelection((e: { selection: { startLineNumber: number; endLineNumber: number; startColumn: number; endColumn: number } }) => {
       const sel = e.selection;
       if (sel.startLineNumber === sel.endLineNumber && sel.startColumn === sel.endColumn) return;
       const fileId = selectedFileIdRef.current;

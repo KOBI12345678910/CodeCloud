@@ -20,6 +20,7 @@ export const projectsTable = pgTable("projects", {
   framework: varchar("framework", { length: 50 }),
   templateId: uuid("template_id").references(() => templatesTable.id),
   isPublic: boolean("is_public").default(true).notNull(),
+  isTemplate: boolean("is_template").default(false).notNull(),
   isArchived: boolean("is_archived").default(false).notNull(),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   forkedFromId: uuid("forked_from_id"),

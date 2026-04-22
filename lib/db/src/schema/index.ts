@@ -47,3 +47,4 @@ export * from "./github-webhooks";
 export * from "./container-logs";
 export * from "./milestones";
 export * from "./agent-tasks";
+export * from "./checkpoints";

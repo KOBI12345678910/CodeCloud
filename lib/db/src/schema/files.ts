@@ -8,6 +8,7 @@ export const filesTable = pgTable("files", {
   projectId: uuid("project_id").notNull().references(() => projectsTable.id, { onDelete: "cascade" }),
   path: varchar("path", { length: 500 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
+  parentId: uuid("parent_id"),
   isDirectory: boolean("is_directory").default(false).notNull(),
   content: text("content"),
   binaryUrl: text("binary_url"),
